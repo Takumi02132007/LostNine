@@ -4,7 +4,7 @@
 PlayerSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 28
-  productGUID: 19f035eb3e26f43ff9d55a4db74fa2e0
+  productGUID: 53a01ab7ec24041cf952d38226086b77
   AndroidProfiler: 0
   AndroidFilterTouchesWhenObscured: 0
   AndroidEnableSustainedPerformanceMode: 0
@@ -512,7 +512,7 @@ PlayerSettings:
   ps4GarlicHeapSize: 2048
   ps4ProGarlicHeapSize: 2560
   playerPrefsMaxSize: 32768
-  ps4Passcode: u1HdPltN4nwm6xYhXFxdRrD077TQAmmR
+  ps4Passcode: A66qQgRmHkTbFr8dt9e2mN2MIi0Y5juL
   ps4pnSessions: 1
   ps4pnPresence: 1
   ps4pnFriends: 1
@@ -679,10 +679,10 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: 5de0f06f-eec5-44af-9ef8-2b9ec6a9b7d7
+  cloudProjectId: 7792efcf-3d29-4dd7-b73a-c4760534e43e
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: Project_Lost
+  projectName: Project_Lost 2025-11-30_14-57-47
   organizationId: harasinazzz81
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
