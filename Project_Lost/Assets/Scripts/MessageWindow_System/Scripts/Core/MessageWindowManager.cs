@@ -123,10 +123,11 @@ namespace MessageWindowSystem.Core
 
             // Start Typing
             if (_typingCoroutine != null) StopCoroutine(_typingCoroutine);
-            _typingCoroutine = StartCoroutine(TypeText(_currentLine.text));
+            float speed = _currentLine.typingSpeed > 0 ? _currentLine.typingSpeed : typingSpeed;
+            _typingCoroutine = StartCoroutine(TypeText(_currentLine.text, speed));
         }
 
-        private IEnumerator TypeText(string text)
+        private IEnumerator TypeText(string text, float speed)
         {
             _isTyping = true;
             dialogueText.text = text;
@@ -142,7 +143,7 @@ namespace MessageWindowSystem.Core
             for (int i = 0; i <= totalVisibleCharacters; i++)
             {
                 dialogueText.maxVisibleCharacters = i;
-                yield return new WaitForSeconds(typingSpeed);
+                yield return new WaitForSeconds(speed);
             }
 
             _isTyping = false;

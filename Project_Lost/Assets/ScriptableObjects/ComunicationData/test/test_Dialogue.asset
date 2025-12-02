@@ -13,8 +13,15 @@ MonoBehaviour:
   m_Name: test_Dialogue
   m_EditorClassIdentifier: 
   lines:
-  - speakerName: 
-    portrait: {fileID: 0}
-    text: 
+  - speakerName: sii
+    portrait: {fileID: -2459997212589772163, guid: e14f98570c027a34b83d2f5a5d5c90bd, type: 3}
+    text: I am lolicon
+    customActions:
+    - Shake
+    typingSpeed: 0
+  - speakerName: sii
+    portrait: {fileID: -2459997212589772163, guid: e14f98570c027a34b83d2f5a5d5c90bd, type: 3}
+    text: You are lolicon
     customActions:
     - 
+    typingSpeed: 0

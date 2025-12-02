@@ -18,5 +18,8 @@ namespace MessageWindowSystem.Data
         
         [Tooltip("Custom actions to trigger (e.g., 'Shake', 'Flash')")]
         public List<string> customActions;
+        
+        [Tooltip("Typing speed for this line (seconds per character). 0 = use default from Manager")]
+        public float typingSpeed = 0f;
     }
 }
