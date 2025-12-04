@@ -21,5 +21,15 @@ namespace MessageWindowSystem.Data
         
         [Tooltip("Typing speed for this line (seconds per character). 0 = use default from Manager")]
         public float typingSpeed = 0f;
+
+        [Tooltip("Direction the speaker name should slide in from for this line. Default = use Manager setting.")]
+        public NameSlideDirection nameSlideDirection = NameSlideDirection.Default;
+    }
+
+    public enum NameSlideDirection
+    {
+        Default,
+        Left,
+        Right
     }
 }

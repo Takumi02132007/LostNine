@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -5,6 +6,7 @@ using TMPro;
 using UnityEngine.UI;
 using MessageWindowSystem.Data;
 using UnityEngine.InputSystem;
+using Main.UIMoves;
 
 namespace MessageWindowSystem.Core
 {
@@ -18,11 +20,21 @@ namespace MessageWindowSystem.Core
 
         [Header("Settings")]
         [SerializeField] private float typingSpeed = 0.05f;
+        [Space]
+        [Header("Name Slide In")]
+        [SerializeField] private bool animateName = true;
+        [SerializeField] private bool slideFromRight = false;
+        [SerializeField] private float nameSlideDistance = 600f;
+        [SerializeField] private float nameSlideDuration = 0.35f;
+        [SerializeField] private DG.Tweening.Ease nameSlideEase = DG.Tweening.Ease.OutCubic;
 
         private Queue<DialogueLine> _linesQueue = new Queue<DialogueLine>();
         private DialogueLine _currentLine;
         private bool _isTyping;
         private Coroutine _typingCoroutine;
+        private Vector2 _nameOriginalAnchored;
+        private bool _nameOriginalCaptured = false;
+        private string _previousSpeakerName = null;
         
         // State tracking
         private bool _isWindowActive = false;
@@ -35,6 +47,16 @@ namespace MessageWindowSystem.Core
             else Destroy(gameObject);
 
             if (windowRoot) windowRoot.SetActive(false);
+            // キャッシュしておく: speakerNameText の anchoredPosition（存在する場合）
+            if (speakerNameText != null)
+            {
+                var rt = speakerNameText.rectTransform;
+                if (rt != null)
+                {
+                    _nameOriginalAnchored = rt.anchoredPosition;
+                    _nameOriginalCaptured = true;
+                }
+            }
         }
 
         public void StartScenario(DialogueScenario scenario)
@@ -97,7 +119,8 @@ namespace MessageWindowSystem.Core
             _currentLine = _linesQueue.Dequeue();
 
             // Update UI
-            if (speakerNameText) speakerNameText.text = _currentLine.speakerName;
+            string newSpeakerName = _currentLine.speakerName ?? string.Empty;
+            if (speakerNameText) speakerNameText.text = newSpeakerName;
             
             if (portraitImage)
             {
@@ -120,6 +143,60 @@ namespace MessageWindowSystem.Core
                     if (EffectManager.Instance) EffectManager.Instance.PlayEffect(action);
                 }
             }
+
+            // 名前表示を画面外からスライドインさせる（前の名前と同じならスキップ）
+            if (animateName && speakerNameText != null)
+            {
+                // 前の名前と同じならアニメーションをスキップ
+                if (!string.Equals(newSpeakerName, _previousSpeakerName, StringComparison.Ordinal))
+                {
+                    var rt = speakerNameText.rectTransform;
+                    if (rt != null)
+                    {
+                        if (!_nameOriginalCaptured)
+                        {
+                            _nameOriginalAnchored = rt.anchoredPosition;
+                            _nameOriginalCaptured = true;
+                        }
+
+                            // スタート位置を画面外（左右）に設定してから移動
+                            // ラインごとの指定があればそれを優先して方向を決定
+                            bool useSlideFromRight = slideFromRight;
+                            if (_currentLine != null)
+                            {
+                                switch (_currentLine.nameSlideDirection)
+                                {
+                                    case NameSlideDirection.Left:
+                                        useSlideFromRight = false;
+                                        break;
+                                    case NameSlideDirection.Right:
+                                        useSlideFromRight = true;
+                                        break;
+                                    case NameSlideDirection.Default:
+                                    default:
+                                        // Manager の設定を使う
+                                        break;
+                                }
+                            }
+                            float dir = useSlideFromRight ? 1f : -1f;
+                        var startPos = _nameOriginalAnchored + new Vector2(dir * nameSlideDistance, 0f);
+                        rt.anchoredPosition = startPos;
+
+                        var opts = new MoveWithEasing.MoveOptions
+                        {
+                            duration = nameSlideDuration,
+                            ease = nameSlideEase,
+                            shakeOnComplete = false,
+                            endAlpha = 1f
+                        };
+
+                        MoveWithEasing.MoveToAnchored(speakerNameText.gameObject, _nameOriginalAnchored, opts);
+                    }
+                }
+            }
+
+            // 前回のスピーカー名を更新
+            _previousSpeakerName = newSpeakerName;
 
             // Start Typing
             if (_typingCoroutine != null) StopCoroutine(_typingCoroutine);

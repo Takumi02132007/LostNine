@@ -19,9 +19,11 @@ MonoBehaviour:
     customActions:
     - Shake
     typingSpeed: 0
-  - speakerName: sii
+    nameSlideDirection: 2
+  - speakerName: sii?
     portrait: {fileID: -2459997212589772163, guid: e14f98570c027a34b83d2f5a5d5c90bd, type: 3}
     text: You are lolicon
     customActions:
     - 
     typingSpeed: 0
+    nameSlideDirection: 1
