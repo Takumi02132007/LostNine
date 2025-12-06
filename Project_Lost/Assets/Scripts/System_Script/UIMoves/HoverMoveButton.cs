@@ -9,6 +9,7 @@ namespace Main.UIMoves
     /// マウスホバーで MoveWithEasing を使って移動・復帰するコンポーネント。
     /// - カーソルが乗ったら指定位置へ移動
     /// - カーソルが離れたら元の位置に戻る
+    /// - ホバー時にサウンドを再生
     /// </summary>
     public class HoverMoveButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
@@ -27,10 +28,19 @@ namespace Main.UIMoves
         [SerializeField] private float endAlpha = 1f;
         [SerializeField] private float fadeDuration = 0.2f;
 
+        [Space]
+        [Header("Sound Settings")]
+        [SerializeField] private AudioClip hoverSoundClip;
+        [SerializeField] private AudioClip exitSoundClip;
+        [SerializeField] private float soundVolume = 1f;
+
         private Vector3 _originalWorldPosition;
         private Vector2 _originalAnchoredPosition;
         private bool _isHovering = false;
         private DG.Tweening.Sequence _currentSequence;
+        [SerializeField] private float hoverSoundCooldown = 0.2f; // この時間内は再生しない
+        private float _lastHoverSoundTime = -999f;
+
 
         private void OnEnable()
         {
@@ -56,6 +66,8 @@ namespace Main.UIMoves
             _isHovering = true;
             KillCurrentSequence();
 
+            PlaySound(hoverSoundClip);
+
             var opts = BuildMoveOptions();
 
             if (useAnchoredPosition)
@@ -74,6 +86,8 @@ namespace Main.UIMoves
 
             _isHovering = false;
             KillCurrentSequence();
+
+            PlaySound(exitSoundClip);
 
             var opts = BuildMoveOptions();
 
@@ -100,6 +114,25 @@ namespace Main.UIMoves
                 fadeDuration = fadeDuration
             };
         }
+
+        private void PlaySound(AudioClip clip)
+        {
+            if (clip == null) return;
+
+            // --- クールタイム処理 ---
+            if (Time.time - _lastHoverSoundTime < hoverSoundCooldown) return;
+            _lastHoverSoundTime = Time.time;
+            // -------------------------
+
+            AudioSource audioSource = GetComponent<AudioSource>();
+            if (audioSource == null)
+            {
+                audioSource = gameObject.AddComponent<AudioSource>();
+            }
+
+            audioSource.PlayOneShot(clip, soundVolume);
+        }
+
 
         private void KillCurrentSequence()
         {
