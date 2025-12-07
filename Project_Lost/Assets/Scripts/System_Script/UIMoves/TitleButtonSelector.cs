@@ -9,14 +9,17 @@ public class TitleButtonSelector : MonoBehaviour
 
     [Header("選択中の背景 (ボタンとindex対応)")]
     [SerializeField] private GameObject[] highlights;
+
     [Header("選択後のハイライト (ボタンとindex対応)")]
-    [SerializeField] private GameObject[] selectedHighlights;//選択後のハイライト
+    [SerializeField] private GameObject[] selectedHighlights;
 
     [Space]
     [Header("Sound Settings")]
-    [SerializeField] private AudioClip moveSoundClip;
-    [SerializeField] private AudioClip selectSoundClip;
+    [SerializeField] private AudioSource moveSound;
+    [SerializeField] private AudioSource selectSound;
     [SerializeField] private float soundVolume = 1f;
+    private bool isSelected = false; // 決定済みフラグ 決定後には移動無効化
+    [SerializeField] private MultiUISwitcher uiSwitcher;
 
     private int index = 0;
 
@@ -32,32 +35,56 @@ public class TitleButtonSelector : MonoBehaviour
         // 現在 UI フォーカスがこのボタン群以外なら、入力無視
         if (!IsFocused()) return;
 
-        // ↓ 移動（Down / S）
-        if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
+        // マウスホバー検出
+        CheckMouseHover();
+
+        // ↓ 移動（Down / S / ホイール下）
+        if (!isSelected && (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S) || Input.GetAxis("Mouse ScrollWheel") < 0f))
         {
             index = (index + 1) % buttons.Length;
             ClearSelectedHighlights();
             UpdateHighlight();
-            PlaySound(moveSoundClip);
+            PlaySound(moveSound);
         }
 
-        // ↑ 移動（Up / W）
-        if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W))
+        // ↑ 移動（Up / W / ホイール上）
+        if (!isSelected && (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W) || Input.GetAxis("Mouse ScrollWheel") > 0f))
         {
             index = (index - 1 + buttons.Length) % buttons.Length;
             ClearSelectedHighlights();
             UpdateHighlight();
-            PlaySound(moveSoundClip);
+            PlaySound(moveSound);
         }
 
         // 決定（Enter / F）
-        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.F))
+        if (!isSelected && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.F)))
         {
-            PlaySound(selectSoundClip);
-            buttons[index].onClick.Invoke();
-            // 選択後のハイライト表示
+            isSelected = true;
             ShowSelectedHighlight(index);
+            buttons[index].onClick.Invoke();
+            // SEはボタン側のOnClick()で PlaySelectSound() を呼ぶ
         }
+        // キャンセル（Esc / G）
+        if (isSelected && (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.G)))
+        {
+            Debug.Log("TitleButtonSelector: キャンセル入力検出");
+            isSelected = false;
+            ClearSelectedHighlights();
+            UpdateHighlight();
+            uiSwitcher.HidePanels(0);
+        }
+    }
+
+    public void ResetSelection() // 外部から選択解除したいときに呼ぶ
+    {
+        isSelected = false;
+        ClearSelectedHighlights();
+        UpdateHighlight();
+    }
+
+    public void PlaySelectSound() // ボタンの OnClick() から呼び出す
+    {
+        PlaySound(selectSound);
     }
 
     private bool IsFocused()
@@ -65,7 +92,6 @@ public class TitleButtonSelector : MonoBehaviour
         var selected = EventSystem.current.currentSelectedGameObject;
         if (selected == null) return false;
 
-        // このオブジェクトが持つボタン群に含まれていればフォーカス中
         foreach (var b in buttons)
         {
             if (b.gameObject == selected) return true;
@@ -87,22 +113,14 @@ public class TitleButtonSelector : MonoBehaviour
         SelectThis();
     }
 
-    private void PlaySound(AudioClip clip)
+    private void PlaySound(AudioSource source)
     {
-        if (clip == null) return;
-
-        AudioSource audioSource = GetComponent<AudioSource>();
-        if (audioSource == null)
-        {
-            audioSource = gameObject.AddComponent<AudioSource>();
-        }
-
-        audioSource.PlayOneShot(clip, soundVolume);
+        if (source == null || source.clip == null) return;
+        source.PlayOneShot(source.clip, soundVolume);
     }
 
     private void ClearSelectedHighlights()
     {
-        // すべての選択後ハイライトをオフにする
         for (int i = 0; i < selectedHighlights.Length; i++)
         {
             if (selectedHighlights[i] != null)
@@ -114,10 +132,39 @@ public class TitleButtonSelector : MonoBehaviour
 
     private void ShowSelectedHighlight(int buttonIndex)
     {
-        // 指定ボタンの選択後ハイライトをオン
         if (selectedHighlights.Length > buttonIndex && selectedHighlights[buttonIndex] != null)
         {
             selectedHighlights[buttonIndex].SetActive(true);
+        }
+    }
+
+    private void CheckMouseHover()
+    {
+        if(isSelected) return;
+        var pointerData = new PointerEventData(EventSystem.current)
+        {
+            position = Input.mousePosition
+        };
+
+        var raycastResults = new System.Collections.Generic.List<RaycastResult>();
+        EventSystem.current.RaycastAll(pointerData, raycastResults);
+
+        foreach (var result in raycastResults)
+        {
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                if (result.gameObject == buttons[i].gameObject)
+                {
+                    if (index != i)
+                    {
+                        index = i;
+                        ClearSelectedHighlights();
+                        UpdateHighlight();
+                        PlaySound(moveSound);
+                    }
+                    return;
+                }
+            }
         }
     }
 }

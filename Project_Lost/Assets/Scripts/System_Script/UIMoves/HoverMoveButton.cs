@@ -9,14 +9,14 @@ namespace Main.UIMoves
     /// マウスホバーで MoveWithEasing を使って移動・復帰するコンポーネント。
     /// - カーソルが乗ったら指定位置へ移動
     /// - カーソルが離れたら元の位置に戻る
-    /// - ホバー時にサウンドを再生
+    /// - ホバー時にサウンドを再生 (AudioSource仕様)
     /// </summary>
     public class HoverMoveButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
         [Header("Hover Move Settings")]
         [SerializeField] private Vector3 hoverWorldPosition = Vector3.zero;
         [SerializeField] private Vector2 hoverAnchoredPosition = Vector2.zero;
-        [SerializeField] private bool useAnchoredPosition = true; // true なら anchoredPosition を使う
+        [SerializeField] private bool useAnchoredPosition = true;
 
         [Space]
         [Header("Move Options")]
@@ -29,22 +29,19 @@ namespace Main.UIMoves
         [SerializeField] private float fadeDuration = 0.2f;
 
         [Space]
-        [Header("Sound Settings")]
-        [SerializeField] private AudioClip hoverSoundClip;
-        [SerializeField] private AudioClip exitSoundClip;
-        [SerializeField] private float soundVolume = 1f;
+        [Header("Sound Settings (AudioSource仕様)")]
+        [SerializeField] private AudioSource hoverSoundSource;
+        [SerializeField] private AudioSource exitSoundSource;
+        [SerializeField] private float hoverSoundCooldown = 0.2f; // 連発防止
 
         private Vector3 _originalWorldPosition;
         private Vector2 _originalAnchoredPosition;
         private bool _isHovering = false;
         private DG.Tweening.Sequence _currentSequence;
-        [SerializeField] private float hoverSoundCooldown = 0.2f; // この時間内は再生しない
         private float _lastHoverSoundTime = -999f;
-
 
         private void OnEnable()
         {
-            // 元の位置をキャッシュ
             if (useAnchoredPosition)
             {
                 var rt = GetComponent<RectTransform>();
@@ -62,11 +59,10 @@ namespace Main.UIMoves
         public void OnPointerEnter(PointerEventData eventData)
         {
             if (_isHovering) return;
-
             _isHovering = true;
-            KillCurrentSequence();
 
-            PlaySound(hoverSoundClip);
+            KillCurrentSequence();
+            PlaySound(hoverSoundSource);
 
             var opts = BuildMoveOptions();
 
@@ -83,11 +79,10 @@ namespace Main.UIMoves
         public void OnPointerExit(PointerEventData eventData)
         {
             if (!_isHovering) return;
-
             _isHovering = false;
-            KillCurrentSequence();
 
-            PlaySound(exitSoundClip);
+            KillCurrentSequence();
+            PlaySound(exitSoundSource);
 
             var opts = BuildMoveOptions();
 
@@ -115,24 +110,16 @@ namespace Main.UIMoves
             };
         }
 
-        private void PlaySound(AudioClip clip)
+        private void PlaySound(AudioSource source)
         {
-            if (clip == null) return;
+            if (source == null) return;
 
-            // --- クールタイム処理 ---
+            // クールタイム
             if (Time.time - _lastHoverSoundTime < hoverSoundCooldown) return;
             _lastHoverSoundTime = Time.time;
-            // -------------------------
 
-            AudioSource audioSource = GetComponent<AudioSource>();
-            if (audioSource == null)
-            {
-                audioSource = gameObject.AddComponent<AudioSource>();
-            }
-
-            audioSource.PlayOneShot(clip, soundVolume);
+            source.Play();
         }
-
 
         private void KillCurrentSequence()
         {
