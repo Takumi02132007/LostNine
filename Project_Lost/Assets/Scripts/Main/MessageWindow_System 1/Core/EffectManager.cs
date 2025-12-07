@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using System.Collections;
 
 namespace MessageWindowSystem.Core
@@ -7,10 +8,25 @@ namespace MessageWindowSystem.Core
     {
         public static EffectManager Instance { get; private set; }
 
+        [Header("Flash Overlay")]
+        [SerializeField] private Image flashOverlay; // ← ここにUI Imageを割り当て
+
+        [Header("Flash Settings")]
+        [SerializeField] private float flashInDuration = 0.08f;
+        [SerializeField] private float flashOutDuration = 0.25f;
+        [SerializeField] private Color flashColor = Color.white;
+
         private void Awake()
         {
             if (Instance == null) Instance = this;
             else Destroy(gameObject);
+
+            if (flashOverlay != null)
+            {
+                var col = flashOverlay.color;
+                col.a = 0f;
+                flashOverlay.color = col;
+            }
         }
 
         public void PlayEffect(string effectName)
@@ -23,13 +39,43 @@ namespace MessageWindowSystem.Core
                     StartCoroutine(ShakeCamera(0.5f, 0.2f));
                     break;
                 case "flash":
-                    // Implement flash if needed
-                    Debug.Log("Flash effect triggered");
+                    StartCoroutine(FlashEffect());
                     break;
                 default:
                     Debug.LogWarning($"Effect '{effectName}' not found.");
                     break;
             }
+        }
+
+        private IEnumerator FlashEffect()
+        {
+            if (flashOverlay == null)
+            {
+                Debug.LogWarning("Flash overlay image not assigned.");
+                yield break;
+            }
+
+            // フェードイン
+            float t = 0f;
+            while (t < flashInDuration)
+            {
+                t += Time.deltaTime;
+                float a = Mathf.Lerp(0f, 1f, t / flashInDuration);
+                flashOverlay.color = new Color(flashColor.r, flashColor.g, flashColor.b, a);
+                yield return null;
+            }
+
+            // フェードアウト
+            t = 0f;
+            while (t < flashOutDuration)
+            {
+                t += Time.deltaTime;
+                float a = Mathf.Lerp(1f, 0f, t / flashOutDuration);
+                flashOverlay.color = new Color(flashColor.r, flashColor.g, flashColor.b, a);
+                yield return null;
+            }
+
+            flashOverlay.color = new Color(flashColor.r, flashColor.g, flashColor.b, 0f);
         }
 
         private IEnumerator ShakeCamera(float duration, float magnitude)

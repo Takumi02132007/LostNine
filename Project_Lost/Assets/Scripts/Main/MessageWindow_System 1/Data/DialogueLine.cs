@@ -24,6 +24,9 @@ namespace MessageWindowSystem.Data
 
         [Tooltip("Direction the speaker name should slide in from for this line. Default = use Manager setting.")]
         public NameSlideDirection nameSlideDirection = NameSlideDirection.Default;
+
+        [Tooltip("Audio clip to play when this line is displayed")]
+        public AudioClip voiceClip;
     }
 
     public enum NameSlideDirection

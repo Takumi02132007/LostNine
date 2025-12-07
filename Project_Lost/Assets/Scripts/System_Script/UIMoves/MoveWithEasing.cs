@@ -14,7 +14,7 @@ namespace Main.UIMoves
     /// 使用例:
     /// MoveWithEasing.MoveTo(gameObject, new Vector3(0,0,0), new MoveWithEasing.MoveOptions{ duration = 0.6f, shakeOnComplete = true, endAlpha = 0.8f });
     /// </summary>
-    public static class MoveWithEasing
+    public static class MoveWithEasing // これ単体では MonoBehaviour を継承しない
     {
         public class MoveOptions
         {

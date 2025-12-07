@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using DG.Tweening;
 using Main.UIMoves;
 
@@ -36,6 +37,9 @@ namespace Main.UIMoves
 
         private Vector3 _originalWorldPosition;
         private Vector2 _originalAnchoredPosition;
+        private float _originalAlpha = 1f;
+        private CanvasGroup _canvasGroup;
+        private Graphic _graphic;
         private bool _isHovering = false;
         private DG.Tweening.Sequence _currentSequence;
         private float _lastHoverSoundTime = -999f;
@@ -53,6 +57,24 @@ namespace Main.UIMoves
             else
             {
                 _originalWorldPosition = transform.position;
+            }
+            // キャッシュ: 元の透明度を取得（CanvasGroup優先、次にGraphic）
+            _canvasGroup = GetComponent<CanvasGroup>();
+            if (_canvasGroup != null)
+            {
+                _originalAlpha = _canvasGroup.alpha;
+            }
+            else
+            {
+                _graphic = GetComponent<Graphic>();
+                if (_graphic == null)
+                {
+                    _graphic = GetComponentInChildren<Graphic>();
+                }
+                if (_graphic != null)
+                {
+                    _originalAlpha = _graphic.color.a;
+                }
             }
         }
 
@@ -84,7 +106,7 @@ namespace Main.UIMoves
             KillCurrentSequence();
             PlaySound(exitSoundSource);
 
-            var opts = BuildMoveOptions();
+            var opts = BuildMoveOptions(_originalAlpha);
 
             if (useAnchoredPosition)
             {
@@ -96,7 +118,7 @@ namespace Main.UIMoves
             }
         }
 
-        private MoveWithEasing.MoveOptions BuildMoveOptions()
+        private MoveWithEasing.MoveOptions BuildMoveOptions(float? overrideEndAlpha = null)
         {
             return new MoveWithEasing.MoveOptions
             {
@@ -105,7 +127,7 @@ namespace Main.UIMoves
                 shakeOnComplete = shakeOnComplete,
                 shakeStrength = shakeStrength,
                 shakeDuration = shakeDuration,
-                endAlpha = endAlpha,
+                endAlpha = overrideEndAlpha ?? endAlpha,
                 fadeDuration = fadeDuration
             };
         }

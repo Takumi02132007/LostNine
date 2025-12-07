@@ -7,6 +7,7 @@ using UnityEngine.UI;
 using MessageWindowSystem.Data;
 using UnityEngine.InputSystem;
 using Main.UIMoves;
+using DG.Tweening;
 
 namespace MessageWindowSystem.Core
 {
@@ -17,16 +18,31 @@ namespace MessageWindowSystem.Core
         [SerializeField] private TMP_Text dialogueText;
         [SerializeField] private Image portraitImage;
         [SerializeField] private GameObject windowRoot;
+        [SerializeField] private AudioSource voiceAudioSource;
 
         [Header("Settings")]
         [SerializeField] private float typingSpeed = 0.05f;
-        [Space]
+
         [Header("Name Slide In")]
         [SerializeField] private bool animateName = true;
-        [SerializeField] private bool slideFromRight = false;
+        private bool slideFromRight = false;
         [SerializeField] private float nameSlideDistance = 600f;
         [SerializeField] private float nameSlideDuration = 0.35f;
         [SerializeField] private DG.Tweening.Ease nameSlideEase = DG.Tweening.Ease.OutCubic;
+
+        [Header("Portrait Jump")]
+        [SerializeField] private bool portraitJumpOnText = true;
+        [SerializeField] private float portraitJumpHeight = 50f;
+        [SerializeField] private float portraitJumpDuration = 0.3f;
+        [SerializeField] private DG.Tweening.Ease portraitJumpEase = DG.Tweening.Ease.OutBounce;
+
+        [Header("Skip Mode")]
+        [SerializeField] private bool enableSkipMode = true;
+        [SerializeField] private Key skipKey = Key.LeftCtrl;
+        [SerializeField] private float skipTypingSpeed = 0.001f;
+
+        // Log
+        private List<(string speaker, string text)> _log = new();
 
         private Queue<DialogueLine> _linesQueue = new Queue<DialogueLine>();
         private DialogueLine _currentLine;
@@ -35,8 +51,7 @@ namespace MessageWindowSystem.Core
         private Vector2 _nameOriginalAnchored;
         private bool _nameOriginalCaptured = false;
         private string _previousSpeakerName = null;
-        
-        // State tracking
+        private Vector3 _portraitOriginalPosition;
         private bool _isWindowActive = false;
 
         public static MessageWindowManager Instance { get; private set; }
@@ -47,7 +62,7 @@ namespace MessageWindowSystem.Core
             else Destroy(gameObject);
 
             if (windowRoot) windowRoot.SetActive(false);
-            // キャッシュしておく: speakerNameText の anchoredPosition（存在する場合）
+
             if (speakerNameText != null)
             {
                 var rt = speakerNameText.rectTransform;
@@ -57,6 +72,11 @@ namespace MessageWindowSystem.Core
                     _nameOriginalCaptured = true;
                 }
             }
+
+            if (portraitImage != null)
+            {
+                _portraitOriginalPosition = portraitImage.transform.position;
+            }
         }
 
         public void StartScenario(DialogueScenario scenario)
@@ -65,9 +85,7 @@ namespace MessageWindowSystem.Core
 
             _linesQueue.Clear();
             foreach (var line in scenario.lines)
-            {
                 _linesQueue.Enqueue(line);
-            }
 
             if (windowRoot) windowRoot.SetActive(true);
             _isWindowActive = true;
@@ -78,34 +96,28 @@ namespace MessageWindowSystem.Core
         {
             if (!_isWindowActive) return;
 
-            // Input Handling (New Input System check)
             bool inputDetected = false;
-            
+
             if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame) inputDetected = true;
             if (Keyboard.current != null && (Keyboard.current.spaceKey.wasPressedThisFrame || Keyboard.current.enterKey.wasPressedThisFrame)) inputDetected = true;
             if (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasPressedThisFrame) inputDetected = true;
 
             if (inputDetected)
-            {
-                OnInteract();
-            }
+                SkipOrInteract();
         }
 
-        private void OnInteract()
+        private void SkipOrInteract()
         {
             if (_isTyping)
             {
-                // Skip typing
                 if (_typingCoroutine != null) StopCoroutine(_typingCoroutine);
                 _isTyping = false;
                 dialogueText.text = _currentLine.text;
                 dialogueText.maxVisibleCharacters = _currentLine.text.Length;
+                return;
             }
-            else
-            {
-                // Next line
-                DisplayNextLine();
-            }
+
+            DisplayNextLine();
         }
 
         private void DisplayNextLine()
@@ -118,16 +130,21 @@ namespace MessageWindowSystem.Core
 
             _currentLine = _linesQueue.Dequeue();
 
-            // Update UI
             string newSpeakerName = _currentLine.speakerName ?? string.Empty;
             if (speakerNameText) speakerNameText.text = newSpeakerName;
-            
+
+            // Log 保存
+            _log.Add((newSpeakerName, _currentLine.text));
+
             if (portraitImage)
             {
                 if (_currentLine.portrait != null)
                 {
                     portraitImage.sprite = _currentLine.portrait;
                     portraitImage.gameObject.SetActive(true);
+
+                    if (portraitJumpOnText)
+                        PlayPortraitJump();
                 }
                 else
                 {
@@ -135,7 +152,6 @@ namespace MessageWindowSystem.Core
                 }
             }
 
-            // Trigger Effects
             if (_currentLine.customActions != null)
             {
                 foreach (var action in _currentLine.customActions)
@@ -144,10 +160,14 @@ namespace MessageWindowSystem.Core
                 }
             }
 
-            // 名前表示を画面外からスライドインさせる（前の名前と同じならスキップ）
+            // 音声再生
+            if (_currentLine.voiceClip != null && voiceAudioSource != null)
+            {
+                voiceAudioSource.PlayOneShot(_currentLine.voiceClip);
+            }
+
             if (animateName && speakerNameText != null)
             {
-                // 前の名前と同じならアニメーションをスキップ
                 if (!string.Equals(newSpeakerName, _previousSpeakerName, StringComparison.Ordinal))
                 {
                     var rt = speakerNameText.rectTransform;
@@ -159,26 +179,14 @@ namespace MessageWindowSystem.Core
                             _nameOriginalCaptured = true;
                         }
 
-                            // スタート位置を画面外（左右）に設定してから移動
-                            // ラインごとの指定があればそれを優先して方向を決定
-                            bool useSlideFromRight = slideFromRight;
-                            if (_currentLine != null)
-                            {
-                                switch (_currentLine.nameSlideDirection)
-                                {
-                                    case NameSlideDirection.Left:
-                                        useSlideFromRight = false;
-                                        break;
-                                    case NameSlideDirection.Right:
-                                        useSlideFromRight = true;
-                                        break;
-                                    case NameSlideDirection.Default:
-                                    default:
-                                        // Manager の設定を使う
-                                        break;
-                                }
-                            }
-                            float dir = useSlideFromRight ? 1f : -1f;
+                        bool useSlideFromRight = slideFromRight;
+                        switch (_currentLine.nameSlideDirection)
+                        {
+                            case NameSlideDirection.Left: useSlideFromRight = false; break;
+                            case NameSlideDirection.Right: useSlideFromRight = true; break;
+                        }
+
+                        float dir = useSlideFromRight ? 1f : -1f;
                         var startPos = _nameOriginalAnchored + new Vector2(dir * nameSlideDistance, 0f);
                         rt.anchoredPosition = startPos;
 
@@ -195,10 +203,8 @@ namespace MessageWindowSystem.Core
                 }
             }
 
-            // 前回のスピーカー名を更新
             _previousSpeakerName = newSpeakerName;
 
-            // Start Typing
             if (_typingCoroutine != null) StopCoroutine(_typingCoroutine);
             float speed = _currentLine.typingSpeed > 0 ? _currentLine.typingSpeed : typingSpeed;
             _typingCoroutine = StartCoroutine(TypeText(_currentLine.text, speed));
@@ -210,17 +216,17 @@ namespace MessageWindowSystem.Core
             dialogueText.text = text;
             dialogueText.maxVisibleCharacters = 0;
 
-            // Need to parse TMP text info to get character count correctly if tags are used?
-            // TMP handles maxVisibleCharacters by character index, ignoring tags.
-            // However, we need to wait for the mesh to update to get accurate info.
-            
             dialogueText.ForceMeshUpdate();
-            int totalVisibleCharacters = dialogueText.textInfo.characterCount; // This excludes tags
+            int totalVisibleCharacters = dialogueText.textInfo.characterCount;
 
             for (int i = 0; i <= totalVisibleCharacters; i++)
             {
+                float step = (enableSkipMode && Keyboard.current != null && Keyboard.current[skipKey].isPressed)
+                    ? skipTypingSpeed
+                    : speed;
+
                 dialogueText.maxVisibleCharacters = i;
-                yield return new WaitForSeconds(speed);
+                yield return new WaitForSeconds(step);
             }
 
             _isTyping = false;
@@ -230,7 +236,38 @@ namespace MessageWindowSystem.Core
         {
             _isWindowActive = false;
             if (windowRoot) windowRoot.SetActive(false);
-            Debug.Log("Scenario Ended");
+        }
+
+        private void PlayPortraitJump()
+        {
+            if (portraitImage == null) return;
+
+            var portraitRect = portraitImage.GetComponent<RectTransform>();
+            if (portraitRect == null) return;
+
+            var originalAnchoredPos = portraitRect.anchoredPosition;
+            var jumpPos = originalAnchoredPos + Vector2.up * portraitJumpHeight;
+
+            DOTween.To(
+                () => portraitRect.anchoredPosition,
+                x => portraitRect.anchoredPosition = x,
+                jumpPos,
+                portraitJumpDuration * 0.5f
+            ).SetEase(Ease.OutQuad);
+
+            DOTween.To(
+                () => portraitRect.anchoredPosition,
+                x => portraitRect.anchoredPosition = x,
+                originalAnchoredPos,
+                portraitJumpDuration * 0.5f
+            ).SetDelay(portraitJumpDuration * 0.5f)
+             .SetEase(portraitJumpEase);
+        }
+
+        // ログ取得
+        public IReadOnlyList<(string speaker, string text)> GetLog()
+        {
+            return _log;
         }
     }
 }

@@ -16,7 +16,7 @@ public class FirstMove : MonoBehaviour
         originalPos = rect.anchoredPosition;
     }
 
-    void OnEnable()
+    void Start()
     {
         rect.anchoredPosition = originalPos + new Vector2(0, offsetY); // 画面下へずらす
         rect.DOAnchorPos(originalPos, duration).SetEase(ease);
