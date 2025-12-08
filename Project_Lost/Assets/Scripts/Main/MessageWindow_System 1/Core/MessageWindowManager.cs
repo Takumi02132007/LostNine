@@ -18,14 +18,13 @@ namespace MessageWindowSystem.Core
         [SerializeField] private TMP_Text dialogueText;
         [SerializeField] private Image portraitImage;
         [SerializeField] private GameObject windowRoot;
-        [SerializeField] private AudioSource voiceAudioSource;
 
         [Header("Settings")]
         [SerializeField] private float typingSpeed = 0.05f;
 
         [Header("Name Slide In")]
         [SerializeField] private bool animateName = true;
-        private bool slideFromRight = false;
+        [SerializeField] private bool slideFromRight = false;
         [SerializeField] private float nameSlideDistance = 600f;
         [SerializeField] private float nameSlideDuration = 0.35f;
         [SerializeField] private DG.Tweening.Ease nameSlideEase = DG.Tweening.Ease.OutCubic;
@@ -92,18 +91,16 @@ namespace MessageWindowSystem.Core
             DisplayNextLine();
         }
 
+        // ← Updateでの入力検出は廃止（ボタン操作のみ進行）
         private void Update()
         {
             if (!_isWindowActive) return;
+        }
 
-            bool inputDetected = false;
-
-            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame) inputDetected = true;
-            if (Keyboard.current != null && (Keyboard.current.spaceKey.wasPressedThisFrame || Keyboard.current.enterKey.wasPressedThisFrame)) inputDetected = true;
-            if (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasPressedThisFrame) inputDetected = true;
-
-            if (inputDetected)
-                SkipOrInteract();
+        // OnClick からのみ呼ばれる専用関数
+        public void Next()
+        {
+            SkipOrInteract();
         }
 
         private void SkipOrInteract()
@@ -133,7 +130,6 @@ namespace MessageWindowSystem.Core
             string newSpeakerName = _currentLine.speakerName ?? string.Empty;
             if (speakerNameText) speakerNameText.text = newSpeakerName;
 
-            // Log 保存
             _log.Add((newSpeakerName, _currentLine.text));
 
             if (portraitImage)
@@ -158,12 +154,6 @@ namespace MessageWindowSystem.Core
                 {
                     if (EffectManager.Instance) EffectManager.Instance.PlayEffect(action);
                 }
-            }
-
-            // 音声再生
-            if (_currentLine.voiceClip != null && voiceAudioSource != null)
-            {
-                voiceAudioSource.PlayOneShot(_currentLine.voiceClip);
             }
 
             if (animateName && speakerNameText != null)
@@ -264,7 +254,6 @@ namespace MessageWindowSystem.Core
              .SetEase(portraitJumpEase);
         }
 
-        // ログ取得
         public IReadOnlyList<(string speaker, string text)> GetLog()
         {
             return _log;
