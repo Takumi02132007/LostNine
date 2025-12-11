@@ -2402,7 +2402,7 @@ MonoBehaviour:
   speakerNameText: {fileID: 582567344}
   dialogueText: {fileID: 68159611}
   portraitImage: {fileID: 2036071046}
-  windowRoot: {fileID: 1387112744}
+  windowRoot: {fileID: 0}
   typingSpeed: 0.05
   animateName: 1
   nameSlideDistance: 1920
