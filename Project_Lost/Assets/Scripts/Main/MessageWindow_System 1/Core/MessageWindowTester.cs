@@ -10,6 +10,7 @@ namespace MessageWindowSystem.Testing
         [Header("Test Settings")]
         public bool playOnStart = true;
         public DialogueScenario testScenario;
+        public bool enableKeywords = false;
 
         private void Start()
         {
@@ -17,7 +18,7 @@ namespace MessageWindowSystem.Testing
             {
                 if (testScenario != null)
                 {
-                    MessageWindowManager.Instance.StartScenario(testScenario);
+                    MessageWindowManager.Instance.StartScenario(testScenario, enableKeywords);
                 }
                 else
                 {
@@ -31,7 +32,7 @@ namespace MessageWindowSystem.Testing
                         new DialogueLine { speakerName = "System", text = "Click to continue or skip typing." }
                     };
                     
-                    MessageWindowManager.Instance.StartScenario(dummyScenario);
+                    MessageWindowManager.Instance.StartScenario(dummyScenario, enableKeywords);
                 }
             }
         }

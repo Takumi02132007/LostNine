@@ -15,7 +15,7 @@ MonoBehaviour:
   lines:
   - speakerName: sii
     portrait: {fileID: -2459997212589772163, guid: e14f98570c027a34b83d2f5a5d5c90bd, type: 3}
-    text: I am lolicon
+    text: "<link=\"test_1\">\u3053\u308C</link>\u3068<link=\"test_2\">\u3053\u308C</link>\u304C\u30AD\u30FC\u30EF\u30FC\u30C9\u3067\u3059"
     customActions:
     - Shake
     typingSpeed: 0
@@ -23,7 +23,7 @@ MonoBehaviour:
     voiceClip: {fileID: 0}
   - speakerName: sii?
     portrait: {fileID: -2459997212589772163, guid: e14f98570c027a34b83d2f5a5d5c90bd, type: 3}
-    text: You are lolicon
+    text: ???????
     customActions:
     - Flash
     typingSpeed: 0
