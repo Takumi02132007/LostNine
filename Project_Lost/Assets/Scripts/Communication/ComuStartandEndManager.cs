@@ -1,16 +1,16 @@
 using UnityEngine;
 using Cysharp.Threading.Tasks;
-using Cysharp.Threading.Tasks.DOTween;
 using UnityEngine.SceneManagement;
 using DG.Tweening;
+using UnityEngine.UI;
 
 public class ComuStartandEndManager : MonoBehaviour
 {
     [SerializeField] private GameObject comuStartUI;
     [SerializeField] private GameObject comuEndUI;
-    [SerializeField] private CanvasGroup fadeCanvas; // フェード用
+    [SerializeField] private Image fadeFlame; // フェード用
 
-    void Start()
+    public void ComuStart()
     {
         StartComuFlow().Forget();
     }
@@ -21,14 +21,24 @@ public class ComuStartandEndManager : MonoBehaviour
     private async UniTaskVoid StartComuFlow()
     {
         // ① 最初のPlay
+        MoveOnClickandReturn fadeBlackFlame = fadeFlame.GetComponent<MoveOnClickandReturn>();
+        fadeFlame.gameObject.SetActive(true);
+        fadeBlackFlame.Play();
+
+        await UniTask.Delay(1000);
+        
         MoveOnClickandReturn callStartPanel = comuStartUI.GetComponent<MoveOnClickandReturn>();
         callStartPanel.Play();
 
         // ② 1秒待つ
-        await UniTask.Delay(1000);
+        await UniTask.Delay(1500);
 
         // ③ もう一度Play
         callStartPanel.Play();
+
+        await UniTask.Delay(500);
+
+        fadeFlame.gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -43,22 +53,13 @@ public class ComuStartandEndManager : MonoBehaviour
     {
         MoveOnClickandReturn callEndPanel = comuEndUI.GetComponent<MoveOnClickandReturn>();
 
-        // ① End UI のアニメを再生
+        // ① End UI のアニメ再生
         callEndPanel.Play();
 
-        // **アニメ終了を待ちたい場合はここに wait を入れる（例: 1秒）**
-        await UniTask.Delay(1000);
+        await UniTask.Delay(1500);
 
-        // ② フェードアウト（DOTween）
-        fadeCanvas.alpha = 0;
-        fadeCanvas.gameObject.SetActive(true);
-
-        await fadeCanvas
-            .DOFade(1f, 1f)   // 1秒で真っ黒に
-            .SetEase(Ease.Linear)
-            .ToUniTask();
-
-        // ③ シーン遷移
-        SceneManager.LoadScene("Main");
+        // ② フェードパネルを前面に表示
+        callEndPanel.Play(); 
     }
+
 }

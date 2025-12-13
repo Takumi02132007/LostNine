@@ -54,6 +54,7 @@ namespace MessageWindowSystem.Core
         private string _previousSpeakerName = null;
         private Vector3 _portraitOriginalPosition;
         private bool _isWindowActive = false;
+        [SerializeField] private ComuStartandEndManager comuStartandEndManager;
 
         public static MessageWindowManager Instance { get; private set; }
 
@@ -177,6 +178,15 @@ namespace MessageWindowSystem.Core
         {
             SetKeywordEnabled(enableKeywords);
             StartScenario(scenario);
+        }
+        private void EndScenario()
+        {
+            Debug.Log("Dialogue scenario ended.");
+            _isWindowActive = false;
+            if (windowRoot) windowRoot.SetActive(false);
+        
+            if(comuStartandEndManager == null) return;
+            comuStartandEndManager.ComuEnd();
         }
 
         // OnClick からのみ呼ばれる専用関数
@@ -303,12 +313,6 @@ namespace MessageWindowSystem.Core
             }
 
             _isTyping = false;
-        }
-
-        private void EndScenario()
-        {
-            _isWindowActive = false;
-            if (windowRoot) windowRoot.SetActive(false);
         }
 
         private void PlayPortraitJump()
