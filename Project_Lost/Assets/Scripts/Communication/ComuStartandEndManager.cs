@@ -3,6 +3,7 @@ using Cysharp.Threading.Tasks;
 using UnityEngine.SceneManagement;
 using DG.Tweening;
 using UnityEngine.UI;
+using MessageWindowSystem.Core;
 
 public class ComuStartandEndManager : MonoBehaviour
 {
@@ -26,7 +27,7 @@ public class ComuStartandEndManager : MonoBehaviour
         fadeBlackFlame.Play();
 
         await UniTask.Delay(1000);
-        
+
         MoveOnClickandReturn callStartPanel = comuStartUI.GetComponent<MoveOnClickandReturn>();
         callStartPanel.Play();
 
@@ -37,6 +38,7 @@ public class ComuStartandEndManager : MonoBehaviour
         callStartPanel.Play();
 
         await UniTask.Delay(500);
+        //会話を開始する
 
         fadeFlame.gameObject.SetActive(false);
     }

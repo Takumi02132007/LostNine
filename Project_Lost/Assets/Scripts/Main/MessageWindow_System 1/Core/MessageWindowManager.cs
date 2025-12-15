@@ -16,33 +16,43 @@ namespace MessageWindowSystem.Core
     public class MessageWindowManager : MonoBehaviour
     {
         [Header("UI References")]
+        [Tooltip("Text component for the speaker's name.")]
         [SerializeField] private TMP_Text speakerNameText;
+        [Tooltip("Text component for the dialogue content.")]
         [SerializeField] private TMP_Text dialogueText;
+        [Tooltip("Image component for the character's portrait.")]
         [SerializeField] private Image portraitImage;
+        [Tooltip("Root GameObject of the message window (to show/hide).")]
         [SerializeField] private GameObject windowRoot;
 
         [Header("Settings")]
+        [Tooltip("Default typing speed (seconds per character).")]
         [SerializeField] private float typingSpeed = 0.05f;
 
         [Header("Name Slide In")]
+        [Tooltip("Enable sliding animation for the speaker's name.")]
         [SerializeField] private bool animateName = true;
         private bool slideFromRight = false;
+        [Tooltip("Distance for the name slide animation.")]
         [SerializeField] private float nameSlideDistance = 600f;
+        [Tooltip("Duration of the name slide animation.")]
         [SerializeField] private float nameSlideDuration = 0.35f;
         [SerializeField] private DG.Tweening.Ease nameSlideEase = DG.Tweening.Ease.OutCubic;
 
         [Header("Portrait Jump")]
+        [Tooltip("Enable jumping animation for the portrait when text appears.")]
         [SerializeField] private bool portraitJumpOnText = true;
         [SerializeField] private float portraitJumpHeight = 50f;
         [SerializeField] private float portraitJumpDuration = 0.3f;
         [SerializeField] private DG.Tweening.Ease portraitJumpEase = DG.Tweening.Ease.OutBounce;
 
         [Header("Skip Mode")]
+        [Tooltip("Enable skipping typing by holding a key.")]
         [SerializeField] private bool enableSkipMode = true;
         [SerializeField] private Key skipKey = Key.LeftCtrl;
         [SerializeField] private float skipTypingSpeed = 0.001f;
 
-        // Log
+        // Log of conversation history
         private List<(string speaker, string text)> _log = new();
 
         private Queue<DialogueLine> _linesQueue = new Queue<DialogueLine>();
@@ -56,6 +66,9 @@ namespace MessageWindowSystem.Core
         private bool _isWindowActive = false;
         [SerializeField] private ComuStartandEndManager comuStartandEndManager;
 
+        /// <summary>
+        /// Singleton instance.
+        /// </summary>
         public static MessageWindowManager Instance { get; private set; }
 
         // ★修正: 外部に通知するのは、クリックされたリンクのID（文字列）
@@ -93,24 +106,34 @@ namespace MessageWindowSystem.Core
             }
         }
 
+        /// <summary>
+        /// Starts a new dialogue scenario.
+        /// </summary>
+        /// <param name="scenario">The scenario data to play.</param>
         public void StartScenario(DialogueScenario scenario)
         {
             if (scenario == null) return;
 
+            // Reset state
             _linesQueue.Clear();
             foreach (var line in scenario.lines)
                 _linesQueue.Enqueue(line);
+
+            // Store current scenario to check for 'NextScenario' later
+            _currentScenarioData = scenario; 
 
             if (windowRoot) windowRoot.SetActive(true);
             _isWindowActive = true;
             DisplayNextLine();
         }
 
+        private DialogueScenario _currentScenarioData; // Added field to track current scenario
+        
         private void Update()
         {
             if (!_isWindowActive) return;
 
-            // マウスクリック検出（TMP リンク用）
+            // Detect mouse click for TMP links
             if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
             {
                 HandleMouseClick();
@@ -185,11 +208,15 @@ namespace MessageWindowSystem.Core
             _isWindowActive = false;
             if (windowRoot) windowRoot.SetActive(false);
         
-            if(comuStartandEndManager == null) return;
-            comuStartandEndManager.ComuEnd();
+            //if(comuStartandEndManager == null) return;
+            //comuStartandEndManager.ComuEnd();
         }
 
         // OnClick からのみ呼ばれる専用関数
+        /// <summary>
+        /// Proceeds to the next line or skips the current typing effect.
+        /// Should be called by UI buttons or input events.
+        /// </summary>
         public void Next()
         {
             SkipOrInteract();
@@ -209,10 +236,22 @@ namespace MessageWindowSystem.Core
             DisplayNextLine();
         }
 
+        /// <summary>
+        /// Dequeues the next line and updates the UI.
+        /// Ends the scenario if no lines remain.
+        /// </summary>
         private void DisplayNextLine()
         {
             if (_linesQueue.Count == 0)
             {
+                // Check if there is a next scenario to chain per current data
+                if (_currentScenarioData != null && _currentScenarioData.nextScenario != null)
+                {
+                    Debug.Log($"Chaining to next scenario: {_currentScenarioData.nextScenario.name}");
+                    StartScenario(_currentScenarioData.nextScenario);
+                    return;
+                }
+
                 EndScenario();
                 return;
             }
@@ -240,12 +279,11 @@ namespace MessageWindowSystem.Core
                 }
             }
 
-            if (_currentLine.customActions != null)
+            if (_currentLine.effects != null)
             {
-                foreach (var action in _currentLine.customActions)
+                foreach (var effectData in _currentLine.effects)
                 {
-                    // EffectManager が Main.UIMoves の外にある場合、ここを調整する必要がある
-                    if (EffectManager.Instance) EffectManager.Instance.PlayEffect(action); 
+                    if (EffectManager.Instance) EffectManager.Instance.PlayEffect(effectData); 
                 }
             }
 

@@ -28,7 +28,13 @@ namespace MessageWindowSystem.Testing
                     {
                         new DialogueLine { speakerName = "System", text = "Hello! This is a test of the <color=yellow>Message Window System</color>." },
                         new DialogueLine { speakerName = "System", text = "It supports <b>Rich Text</b> via TextMeshPro." },
-                        new DialogueLine { speakerName = "System", text = "And custom effects like... <shake>Camera Shake!</shake>", customActions = new List<string> { "Shake" } },
+                        new DialogueLine { 
+                            speakerName = "System", 
+                            text = "And custom effects like... <shake>Camera Shake!</shake>", 
+                            effects = new List<ScreenEffectData> { 
+                                new ScreenEffectData { effectType = EffectType.Shake, floatParam = 0.5f } 
+                            } 
+                        },
                         new DialogueLine { speakerName = "System", text = "Click to continue or skip typing." }
                     };
                     
