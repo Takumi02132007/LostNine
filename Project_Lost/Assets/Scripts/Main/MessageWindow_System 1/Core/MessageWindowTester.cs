@@ -18,7 +18,7 @@ namespace MessageWindowSystem.Testing
             {
                 if (testScenario != null)
                 {
-                    MessageWindowManager.Instance.StartScenario(testScenario, enableKeywords);
+                    MessageWindowManager.Instance.StartScenario(testScenario);
                 }
                 else
                 {
@@ -38,7 +38,7 @@ namespace MessageWindowSystem.Testing
                         new DialogueLine { speakerName = "System", text = "Click to continue or skip typing." }
                     };
                     
-                    MessageWindowManager.Instance.StartScenario(dummyScenario, enableKeywords);
+                    MessageWindowManager.Instance.StartScenario(dummyScenario);
                 }
             }
         }

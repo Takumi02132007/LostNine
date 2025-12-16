@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using DG.Tweening;
 
 namespace MessageWindowSystem.Core
 {
@@ -17,6 +18,15 @@ namespace MessageWindowSystem.Core
         [Header("Audio")]
         [SerializeField] private AudioSource seAudioSource;
         [SerializeField] private AudioSource bgmAudioSource;
+        
+        [Header("Center Image")]
+        [SerializeField] private Image centerImage;
+
+        [Header("Development Effect")]
+        [SerializeField] private AudioClip chargeSE;
+        [SerializeField] private AudioClip developCompleteSE;
+        [SerializeField] private float developShakeStrength = 3f;
+        [SerializeField] private float developShakeDuration = 0.5f;
 
         [Header("Flash Settings")]
         [SerializeField] private float flashInDuration = 0.08f;
@@ -68,6 +78,12 @@ namespace MessageWindowSystem.Core
                 case MessageWindowSystem.Data.EffectType.StopBGM:
                     StopBGM(effectData.floatParam);
                     break;
+                case MessageWindowSystem.Data.EffectType.ShowImage:
+                    ShowImage(effectData.stringParam, effectData.spriteParam, effectData.colorParam);
+                    break;
+                case MessageWindowSystem.Data.EffectType.HideImage:
+                    HideImage();
+                    break;
             }
         }
 
@@ -99,6 +115,94 @@ namespace MessageWindowSystem.Core
             if (bgmAudioSource == null) return;
             bgmAudioSource.Stop();
              // TODO: Implement fade out if needed
+        }
+
+        private void ShowImage(string imageName, Sprite directSprite, Color colorParam)
+        {
+            if (centerImage == null) return;
+            
+            Sprite spriteToUse = directSprite;
+
+            // If no direct sprite, try loading by name
+            if (spriteToUse == null && !string.IsNullOrEmpty(imageName))
+            {
+                spriteToUse = Resources.Load<Sprite>($"Images/{imageName}");
+                if (spriteToUse == null)
+                {
+                    Debug.LogWarning($"Image '{imageName}' not found in Resources/Images/");
+                    return;
+                }
+            }
+
+            if (spriteToUse != null)
+            {
+                centerImage.sprite = spriteToUse;
+                centerImage.gameObject.SetActive(true);
+                
+                // If Color is provided (not clear/black), tint it. Defaults to white if alpha is 0.
+                if (colorParam.a > 0) centerImage.color = colorParam;
+                else centerImage.color = Color.white;
+                
+                centerImage.SetNativeSize(); // Adjust size to sprite
+            }
+        }
+
+        private void HideImage()
+        {
+            if (centerImage != null)
+            {
+                centerImage.gameObject.SetActive(false);
+            }
+        }
+
+        public void PlayChargeSE()
+        {
+            if (seAudioSource != null && chargeSE != null)
+            {
+                seAudioSource.clip = chargeSE;
+                seAudioSource.loop = true;
+                seAudioSource.Play();
+            }
+        }
+
+        public void StopChargeSE()
+        {
+            if (seAudioSource != null && seAudioSource.clip == chargeSE)
+            {
+                seAudioSource.Stop();
+                seAudioSource.loop = false;
+                seAudioSource.clip = null;
+            }
+        }
+
+        public void PlayDevelopmentEffect(System.Action onComplete = null)
+        {
+            // Sound
+            if (seAudioSource != null && developCompleteSE != null)
+            {
+                seAudioSource.PlayOneShot(developCompleteSE);
+            }
+
+            // DOTween Sequence
+            var seq = DG.Tweening.DOTween.Sequence();
+
+            // 1. Shake Camera
+            seq.AppendCallback(() => StartCoroutine(ShakeCamera(developShakeDuration, developShakeStrength)));
+
+            // 2. Flash (Reuse FlashEffect or manual tween)
+            // Using FlashEffect coroutine wrapped in callback or manual tween for sync
+            if (flashOverlay != null)
+            {
+                seq.Join(flashOverlay.DOFade(1f, 0.1f));
+                seq.Append(flashOverlay.DOFade(0f, 0.5f));
+            }
+
+            // 3. Desaturation/Monochrome (Simulated by simple overlay if no shader)
+            // For now, assume Flash and Shake are the main "Physical" indications + Sound.
+            // If user assigns a monochrome overlay to fadeOverlay, we can use that too.
+            // But per spec, "Camera Shake" and "Sound" are key.
+
+            seq.OnComplete(() => onComplete?.Invoke());
         }
 
         private IEnumerator FlashEffect(Color color)

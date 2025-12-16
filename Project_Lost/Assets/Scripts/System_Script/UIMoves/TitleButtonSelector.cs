@@ -57,7 +57,7 @@ public class TitleButtonSelector : MonoBehaviour
         }
 
         // 決定（Enter / F）
-        if (!isSelected && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.F)))
+        if (!isSelected && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.Space)))
         {
             isSelected = true;
             ShowSelectedHighlight(index);

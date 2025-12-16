@@ -51,7 +51,16 @@ namespace Main.UIMoves
                 var rt = GetComponent<RectTransform>();
                 if (rt != null)
                 {
-                    _originalAnchoredPosition = rt.anchoredPosition;
+                    // FirstMoveがある場合は、そのOriginalPos（本来の位置）を正解とする
+                    var firstMove = GetComponent<FirstMove>();
+                    if (firstMove != null)
+                    {
+                        _originalAnchoredPosition = firstMove.OriginalPos;
+                    }
+                    else
+                    {
+                        _originalAnchoredPosition = rt.anchoredPosition;
+                    }
                 }
             }
             else

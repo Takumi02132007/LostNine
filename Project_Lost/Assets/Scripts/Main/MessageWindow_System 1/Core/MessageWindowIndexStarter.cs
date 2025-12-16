@@ -17,7 +17,7 @@ namespace MessageWindowSystem.Testing
         [Tooltip("ID of the scenario to start (if Play On Start is true)")]
         public string startScenarioId;
 
-        public bool enableKeywords = false;
+        // public bool enableKeywords = false; // Removed as keywords are always enabled
 
         private void Start()
         {
@@ -34,7 +34,8 @@ namespace MessageWindowSystem.Testing
                 var scenario = scenarioDatabase.GetScenarioById(scenarioId);
                 if (scenario != null)
                 {
-                    MessageWindowManager.Instance.StartScenario(scenario, enableKeywords);
+                    // Always use default (keywords enabled)
+                    MessageWindowManager.Instance.StartScenario(scenario);
                 }
                 else
                 {

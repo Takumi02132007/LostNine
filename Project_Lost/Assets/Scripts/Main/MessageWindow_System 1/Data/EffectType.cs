@@ -9,6 +9,8 @@ namespace MessageWindowSystem.Data
         FadeOut,
         PlaySE,
         PlayBGM,
-        StopBGM
+        StopBGM,
+        ShowImage,
+        HideImage
     }
 }

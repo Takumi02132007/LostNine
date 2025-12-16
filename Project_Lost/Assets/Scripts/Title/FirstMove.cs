@@ -5,6 +5,7 @@ public class FirstMove : MonoBehaviour
 {
     private RectTransform rect;
     private Vector2 originalPos;
+    public Vector2 OriginalPos => originalPos;
 
     [SerializeField] float duration = 0.4f;
     [SerializeField] float offsetY = -300f; // 下からどれだけオフセットして出すか
@@ -16,7 +17,7 @@ public class FirstMove : MonoBehaviour
         originalPos = rect.anchoredPosition;
     }
 
-    void Start()
+    void OnEnable()
     {
         rect.anchoredPosition = originalPos + new Vector2(0, offsetY); // 画面下へずらす
         rect.DOAnchorPos(originalPos, duration).SetEase(ease);

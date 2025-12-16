@@ -13,7 +13,7 @@ using System.Text.RegularExpressions;
 
 namespace MessageWindowSystem.Core
 {
-    public class MessageWindowManager : MonoBehaviour
+    public class MessageWindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
     {
         [Header("UI References")]
         [Tooltip("Text component for the speaker's name.")]
@@ -75,7 +75,8 @@ namespace MessageWindowSystem.Core
         public event Action<string> OnKeywordClicked; 
         
         // キーワードのクリック有効フラグ（外部から制御）
-        private bool _isKeywordEnabled = false;
+        // キーワードのクリック有効フラグ（外部から制御）
+        private bool _isKeywordEnabled = true;
         public bool IsKeywordEnabled => _isKeywordEnabled;
 
         // 会話開始時などにキーワード反応を切り替えるための公開API
@@ -104,6 +105,9 @@ namespace MessageWindowSystem.Core
             {
                 _portraitOriginalPosition = portraitImage.transform.position;
             }
+
+            // Force enable keywords by default
+            _isKeywordEnabled = true;
         }
 
         /// <summary>
@@ -129,71 +133,203 @@ namespace MessageWindowSystem.Core
 
         private DialogueScenario _currentScenarioData; // Added field to track current scenario
         
+        // --- Hold Interaction Variables ---
+        private Coroutine _chargeCoroutine;
+        private bool _isCharging;
+        private string _chargingLinkID;
+        [Tooltip("Time required to hold the link to develop it.")]
+        [SerializeField] private float chargeDuration = 1.0f;
+        
         private void Update()
         {
-            if (!_isWindowActive) return;
-
-            // Detect mouse click for TMP links
-            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            // Update logic if needed for constant checking, currently mostly event driven
+            // Check for mouse hover outside of pointer down if needed for "Hint"
+            if (_isWindowActive && !_isTyping && _isKeywordEnabled)
             {
-                HandleMouseClick();
+               // TODO: Hover optimization if needed. PointerEnter/Exit on TMPro links is tricky without custom components.
+               // For now, PointerDown handles the interaction start.
             }
         }
 
-        private void HandleMouseClick()
+        public void OnPointerDown(PointerEventData eventData)
         {
-            // タイピング中はリンク検出をスキップ
-            if (!_isWindowActive || _isTyping || dialogueText == null) return;
+            Debug.Log($"OnPointerDown Detected. Active: {_isWindowActive}, Typing: {_isTyping}, KeywordsEnabled: {_isKeywordEnabled}");
 
-            // マウス位置を取得
-            Vector2 mousePos = Mouse.current.position.ReadValue();
-
-            // UI カメラを取得（Canvas の RenderMode に応じて）
-            Camera uiCamera = null;
-            var canvasGroup = dialogueText.GetComponentInParent<Canvas>();
-            if (canvasGroup != null)
+            if (!_isWindowActive || _isTyping || !_isKeywordEnabled) 
             {
-                if (canvasGroup.renderMode == RenderMode.ScreenSpaceCamera)
-                    uiCamera = canvasGroup.worldCamera;
-                else if (canvasGroup.renderMode == RenderMode.ScreenSpaceOverlay)
-                    uiCamera = null; // Overlay の場合は null
+               if (!_isKeywordEnabled) Debug.Log("Keyword interaction ignored: Keywords are disabled.");
+               return;
             }
-
-            // クリック位置に交差するリンクがないか確認
-            int linkIndex = TMP_TextUtilities.FindIntersectingLink(dialogueText, mousePos, uiCamera);
+            
+            // Detect link under pointer
+            int linkIndex = TMP_TextUtilities.FindIntersectingLink(dialogueText, eventData.position, null); // Pass null for camera if Overlay or handle correctly
+            
+            // Fix: TMP_TextUtilities needs correct camera reference
+            Camera uiCamera = null;
+            var canvas = dialogueText.GetComponentInParent<Canvas>();
+            if (canvas.renderMode == RenderMode.ScreenSpaceCamera) uiCamera = canvas.worldCamera;
+            
+            linkIndex = TMP_TextUtilities.FindIntersectingLink(dialogueText, eventData.position, uiCamera);
 
             if (linkIndex != -1)
             {
-                // リンク情報を取得
                 TMP_LinkInfo linkInfo = dialogueText.textInfo.linkInfo[linkIndex];
                 string linkID = linkInfo.GetLinkID();
-
-                // キーワード反応のON/OFFによって挙動を変える
-                if (_isKeywordEnabled)
-                {
-                    // キーワード有効状態: 通常のクリックイベントを発火し、ClueManager に処理させる
-                    OnKeywordClicked?.Invoke(linkID);
-                    // 既存の ClueManager サブスクライブが無くなっている可能性があるため、直接呼び出す
-                    if (global::ClueManager.Instance != null)
-                    {
-                        global::ClueManager.Instance.ProcessKeywordClick(linkID);
-                    }
-                }
-                else
-                {
-                    // キーワード無効（発見演出のみ）: ClueManager に発見を通知
-                    if (global::ClueManager.Instance != null)
-                    {
-                        global::ClueManager.Instance.DiscoverKeyword(linkID);
-                    }
-
-                    // 視覚演出（暫定）
-                    SetLinkColor(linkID, "#FFFF00");
-                    ShakeLinkVisual(linkID);
-                }
-
-                Debug.Log($"リンククリック検出: {linkID} (keywordEnabled={_isKeywordEnabled})");
+                
+                // Start Charge
+                _chargingLinkID = linkID;
+                _isCharging = true;
+                _chargeCoroutine = StartCoroutine(ChargeRoutine(linkIndex, linkID));
             }
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            // Cancel Charge
+            if (_isCharging)
+            {
+                CancelCharge();
+            }
+        }
+
+        private void CancelCharge()
+        {
+            _isCharging = false;
+            if (_chargeCoroutine != null) StopCoroutine(_chargeCoroutine);
+            
+            // Reset Visuals
+             if (!string.IsNullOrEmpty(_chargingLinkID))
+             {
+                 // Reset color logic if needed or restore original color
+                 // Just refreshing text to clear partial effects might be simple
+                 dialogueText.ForceMeshUpdate(); 
+             }
+
+            if (EffectManager.Instance) EffectManager.Instance.StopChargeSE();
+            _chargingLinkID = null;
+        }
+
+        private IEnumerator ChargeRoutine(int linkIndex, string linkID)
+        {
+            if (EffectManager.Instance) EffectManager.Instance.PlayChargeSE();
+
+            // Get link info to manipulate vertices
+            TMP_LinkInfo linkInfo = dialogueText.textInfo.linkInfo[linkIndex];
+            int startCharIdx = linkInfo.linkTextfirstCharacterIndex;
+            int charCount = linkInfo.linkTextLength;
+
+            // Cache original colors and vertices to restore later if cancelled
+            Color32[] originalColors = new Color32[charCount];
+            Vector3[][] originalVerticesByChar = new Vector3[charCount][];
+
+            for (int i = 0; i < charCount; i++)
+            {
+                int charIdx = startCharIdx + i;
+                int materialIndex = dialogueText.textInfo.characterInfo[charIdx].materialReferenceIndex;
+                int vertexIndex = dialogueText.textInfo.characterInfo[charIdx].vertexIndex;
+                
+                // Cache Colors
+                originalColors[i] = dialogueText.textInfo.meshInfo[materialIndex].colors32[vertexIndex];
+
+                // Cache Vertices (4 per char)
+                originalVerticesByChar[i] = new Vector3[4];
+                var srcVertices = dialogueText.textInfo.meshInfo[materialIndex].vertices;
+                originalVerticesByChar[i][0] = srcVertices[vertexIndex + 0];
+                originalVerticesByChar[i][1] = srcVertices[vertexIndex + 1];
+                originalVerticesByChar[i][2] = srcVertices[vertexIndex + 2];
+                originalVerticesByChar[i][3] = srcVertices[vertexIndex + 3];
+            }
+
+            Color32 targetColor = new Color32(255, 215, 0, 255); // Gold
+            float maxScale = 1.5f; // Max expansion
+            
+            float timer = 0f;
+            while (timer < chargeDuration)
+            {
+                timer += Time.deltaTime;
+                float progress = timer / chargeDuration;
+
+                // Use DOTween's helper for easing
+                float easedProgress = DOVirtual.EasedValue(0f, 1f, progress, Ease.OutQuad);
+                float currentScale = Mathf.Lerp(1.0f, maxScale, easedProgress);
+
+                for (int i = 0; i < charCount; i++)
+                {
+                    int charIdx = startCharIdx + i;
+                    // Skip if character is not being rendered (e.g. space)
+                    if (!dialogueText.textInfo.characterInfo[charIdx].isVisible) continue;
+
+                    int materialIndex = dialogueText.textInfo.characterInfo[charIdx].materialReferenceIndex;
+                    int vertexIndex = dialogueText.textInfo.characterInfo[charIdx].vertexIndex;
+
+                    Color32[] destinationColors = dialogueText.textInfo.meshInfo[materialIndex].colors32;
+                    Vector3[] destinationVertices = dialogueText.textInfo.meshInfo[materialIndex].vertices;
+
+                    // 1. Apply Color
+                    Color32 c = Color32.Lerp(originalColors[i], targetColor, progress);
+                    destinationColors[vertexIndex + 0] = c;
+                    destinationColors[vertexIndex + 1] = c;
+                    destinationColors[vertexIndex + 2] = c;
+                    destinationColors[vertexIndex + 3] = c;
+
+                    // 2. Apply Scale
+                    // Calculate center of the character based on original vertices
+                    Vector3 center = (originalVerticesByChar[i][0] + originalVerticesByChar[i][2]) / 2;
+                    
+                    for (int v = 0; v < 4; v++)
+                    {
+                        Vector3 originalPos = originalVerticesByChar[i][v];
+                        Vector3 dir = originalPos - center;
+                        destinationVertices[vertexIndex + v] = center + (dir * currentScale);
+                    }
+                }
+
+                // Apply changes
+                dialogueText.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
+                dialogueText.UpdateVertexData(TMP_VertexDataUpdateFlags.Vertices);
+
+                yield return null;
+            }
+
+            // Snap back size (Restore vertices to original positions)
+            for (int i = 0; i < charCount; i++)
+            {
+                int charIdx = startCharIdx + i;
+                if (!dialogueText.textInfo.characterInfo[charIdx].isVisible) continue;
+
+                int materialIndex = dialogueText.textInfo.characterInfo[charIdx].materialReferenceIndex;
+                int vertexIndex = dialogueText.textInfo.characterInfo[charIdx].vertexIndex;
+                
+                Vector3[] destinationVertices = dialogueText.textInfo.meshInfo[materialIndex].vertices;
+                
+                // Restore from cache
+                destinationVertices[vertexIndex + 0] = originalVerticesByChar[i][0];
+                destinationVertices[vertexIndex + 1] = originalVerticesByChar[i][1];
+                destinationVertices[vertexIndex + 2] = originalVerticesByChar[i][2];
+                destinationVertices[vertexIndex + 3] = originalVerticesByChar[i][3];
+            }
+            dialogueText.UpdateVertexData(TMP_VertexDataUpdateFlags.Vertices);
+
+            // Complete
+            _isCharging = false;
+            if (EffectManager.Instance) EffectManager.Instance.StopChargeSE();
+            
+            // Development Effect
+            if (EffectManager.Instance) 
+            {
+                EffectManager.Instance.PlayDevelopmentEffect(() => {
+                     // On Effect Complete
+                });
+            }
+
+            // Data Logic
+            OnKeywordClicked?.Invoke(linkID);
+            if (global::ClueManager.Instance != null)
+            {
+                global::ClueManager.Instance.ProcessKeywordClick(linkID);
+            }
+            
+            Debug.Log($"Keyword Developed: {linkID}");
         }
 
         // 既存の StartScenario にキーワードの有効フラグを渡すオーバーロード
@@ -224,6 +360,9 @@ namespace MessageWindowSystem.Core
 
         private void SkipOrInteract()
         {
+            // Keywordを長押し中は進まない
+            if (_isCharging) return;
+
             if (_isTyping)
             {
                 if (_typingCoroutine != null) StopCoroutine(_typingCoroutine);
@@ -328,7 +467,11 @@ namespace MessageWindowSystem.Core
 
             if (_typingCoroutine != null) StopCoroutine(_typingCoroutine);
             float speed = _currentLine.typingSpeed > 0 ? _currentLine.typingSpeed : typingSpeed;
-            _typingCoroutine = StartCoroutine(TypeText(_currentLine.text, speed));
+            
+            // Apply persistent colors (grey out clicked keywords)
+            string finalText = ApplyPersistentColors(_currentLine.text);
+            
+            _typingCoroutine = StartCoroutine(TypeText(finalText, speed));
         }
 
         private IEnumerator TypeText(string text, float speed)
@@ -386,9 +529,18 @@ namespace MessageWindowSystem.Core
 
             try
             {
+                // 1. まずターゲットリンクの中身を取得
                 string pattern = $"<a\\s+href\\s*=\\s*\"{Regex.Escape(id)}\"\\s*>(.*?)</a>";
-                string replacement = $"<a href=\"{id}\"><color={colorHex}>$1</color></a>";
-                string newText = Regex.Replace(dialogueText.text, pattern, replacement, RegexOptions.Singleline);
+                
+                // 2. 既存のカラータグがあれば除去して、新しい色で包む
+                // Note: ネストを防ぐため、一旦タグの中身から <color> タグを外す（簡易的）
+                string newText = Regex.Replace(dialogueText.text, pattern, (match) =>
+                {
+                    string content = match.Groups[1].Value;
+                    string stripped = Regex.Replace(content, "</?color[^>]*>", ""); 
+                    return $"<a href=\"{id}\"><color={colorHex}>{stripped}</color></a>";
+                }, RegexOptions.Singleline);
+
                 dialogueText.text = newText;
                 dialogueText.ForceMeshUpdate();
             }
@@ -396,6 +548,64 @@ namespace MessageWindowSystem.Core
             {
                 Debug.LogWarning($"SetLinkColor error for id={id}: {ex.Message}");
             }
+        }
+
+        // キーワードの状態（既読・色）を完全にリセットする
+        public void ResetKeywordState(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return;
+
+            // 1. データ上のリセット
+            if (global::ClueManager.Instance != null)
+            {
+                global::ClueManager.Instance.ResetKeywordStatus(id);
+            }
+
+            // 2. ビジュアル（テキスト色）のリセット
+            if (dialogueText != null)
+            {
+                try
+                {
+                    string pattern = $"<a\\s+href\\s*=\\s*\"{Regex.Escape(id)}\"\\s*>(.*?)</a>";
+                    string newText = Regex.Replace(dialogueText.text, pattern, (match) =>
+                    {
+                        string content = match.Groups[1].Value;
+                        string stripped = Regex.Replace(content, "</?color[^>]*>", "");
+                        return $"<a href=\"{id}\">{stripped}</a>";
+                    }, RegexOptions.Singleline);
+
+                    dialogueText.text = newText;
+                    dialogueText.ForceMeshUpdate();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"ResetKeywordState error for id={id}: {ex.Message}");
+                }
+            }
+        }
+        
+        // テキスト内の全リンクをチェックし、既読（Clicked）状態なら色を適用する
+        private string ApplyPersistentColors(string text)
+        {
+            if (global::ClueManager.Instance == null) return text;
+
+            // Extract all link IDs from the text? Or simpler: 
+            // Since we don't know which IDs are in the text without parsing,
+            // we can iterate matches of <a> tags.
+            
+            return Regex.Replace(text, "<a\\s+href\\s*=\\s*\"(.*?)\"\\s*>(.*?)</a>", (match) =>
+            {
+                string id = match.Groups[1].Value;
+                string content = match.Groups[2].Value;
+
+                if (global::ClueManager.Instance.IsClicked(id))
+                {
+                     // Strip potential old colors and apply grey
+                     string stripped = Regex.Replace(content, "</?color[^>]*>", "");
+                     return $"<a href=\"{id}\"><color=#888888>{stripped}</color></a>";
+                }
+                return match.Value; // No change
+            }, RegexOptions.Singleline);
         }
 
         // 簡易的にテキストを震わせる（UI 全体を短時間だけ揺らす）

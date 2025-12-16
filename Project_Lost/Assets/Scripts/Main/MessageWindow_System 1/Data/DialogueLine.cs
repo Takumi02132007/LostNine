@@ -40,6 +40,9 @@ namespace MessageWindowSystem.Data
         [Tooltip("Name of SE/BGM or other string parameter")]
         public string stringParam;
         
+        [Tooltip("Sprite to display (for ShowImage)")]
+        public Sprite spriteParam;
+        
         [Tooltip("Color for Flash/Fade")]
         public Color colorParam;
     }

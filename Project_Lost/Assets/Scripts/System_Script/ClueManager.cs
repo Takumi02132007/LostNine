@@ -83,6 +83,18 @@ public class ClueManager : MonoBehaviour
         MessageWindowSystem.Core.MessageWindowManager.Instance?.StartKeywordConversation(linkID);
     }
 
+    public bool IsClicked(string id)
+    {
+        return _clicked.Contains(id);
+    }
+
+    public void ResetKeywordStatus(string id)
+    {
+        if (_clicked.Contains(id)) _clicked.Remove(id);
+        if (_discovered.Contains(id)) _discovered.Remove(id);
+        Debug.Log($"[ClueManager] Reset status for: {id}");
+    }
+
     private void AddNoteAutomatically(string id)
     {
         Debug.Log($"[ClueManager] 自動メモを追加しました: {id}");
