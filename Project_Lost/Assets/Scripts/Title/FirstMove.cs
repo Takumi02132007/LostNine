@@ -19,6 +19,14 @@ public class FirstMove : MonoBehaviour
 
     void OnEnable()
     {
+        Play();
+    }
+
+    public void Play()
+    {
+        if (rect == null) rect = GetComponent<RectTransform>();
+        if (originalPos == Vector2.zero && rect != null) originalPos = rect.anchoredPosition; // Auto-init if needed
+        
         rect.anchoredPosition = originalPos + new Vector2(0, offsetY); // 画面下へずらす
         rect.DOAnchorPos(originalPos, duration).SetEase(ease);
     }

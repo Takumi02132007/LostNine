@@ -12,6 +12,15 @@ namespace MessageWindowSystem.Data
         [Tooltip("The next scenario to play automatically after this one ends.")]
         public DialogueScenario nextScenario;
 
+        [Tooltip("Whether keywords are interactive in this scenario.")]
+        public bool enableKeywords = true;
+
+        [Tooltip("If true, this scenario will restart from the beginning when it ends.")]
+        public bool loopScenario = false;
+
+        [Tooltip("If true, calls ComuStartandEndManager.ToggleComu() when this scenario ends.")]
+        public bool toggleComuOnEnd = false;
+
         public List<DialogueLine> lines;
     }
 }

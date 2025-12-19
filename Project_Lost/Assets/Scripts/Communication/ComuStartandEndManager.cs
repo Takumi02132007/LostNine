@@ -1,67 +1,191 @@
 using UnityEngine;
-using Cysharp.Threading.Tasks;
-using UnityEngine.SceneManagement;
-using DG.Tweening;
 using UnityEngine.UI;
-using MessageWindowSystem.Core;
+using Cysharp.Threading.Tasks;
+using MessageWindowSystem.Testing;
 
+/// <summary>
+/// Manages communication start/end UI transitions.
+/// </summary>
 public class ComuStartandEndManager : MonoBehaviour
 {
     [SerializeField] private GameObject comuStartUI;
     [SerializeField] private GameObject comuEndUI;
-    [SerializeField] private Image fadeFlame; // フェード用
+    [SerializeField] private GameObject desk;
+    [SerializeField] private GameObject messageWindow;
+    [SerializeField] private GameObject messageWindowBackGround;
+    [SerializeField] private GameObject NamePlate;
+    [SerializeField] private GameObject NamePlateBackGround;
+    [SerializeField] private Image fadeFrame;
 
-    public void ComuStart()
+    [SerializeField] private GameObject Portrait;
+    
+    [SerializeField] private MessageWindowIndexStarter messageWindowIndexStarter;
+
+    [Header("Scenario IDs")]
+    [Tooltip("If true, uses ProgressManager to generate scenario IDs automatically.")]
+    [SerializeField] private bool useProgressBasedId = true;
+    [Tooltip("Manual start ID (used if useProgressBasedId is false).")]
+    [SerializeField] private string startScenarioId;
+    [Tooltip("Manual end ID (used if useProgressBasedId is false).")]
+    [SerializeField] private string endScenarioId;
+
+    private bool _isInCommunication = false;
+    private bool _isAnimating = false;
+
+    public void ComuStart(string scenarioId) => StartComuFlow(scenarioId).Forget();
+    public void ComuEnd(string scenarioId) => EndComuFlow(scenarioId).Forget();
+
+    /// <summary>
+    /// Toggles between Start and End communication flows.
+    /// Uses Progress-based or Inspector-configured IDs. Can be called from Button.onClick.
+    /// </summary>
+    public void ToggleComu()
     {
-        StartComuFlow().Forget();
+        if (_isAnimating) return;
+
+        if (_isInCommunication)
+        {
+            Portrait.GetComponent<Button>().onClick.Invoke();
+            _isInCommunication = false;
+        }
+        else
+        {
+            Portrait.GetComponent<Button>().onClick.Invoke();
+            _isInCommunication = true;
+        }
+    }
+
+    public void ToggleComuforPortrait()
+    {
+        if (_isAnimating) return;
+
+        string startId = GetStartScenarioId();
+        string endId = GetEndScenarioId();
+
+        if (_isInCommunication)
+        {
+            ComuEnd(endId);
+            _isInCommunication = false;
+        }
+        else
+        {
+            ComuStart(startId);
+            _isInCommunication = true;
+        }
+    }
+
+    private string GetStartScenarioId()
+    {
+        if (useProgressBasedId && ProgressManager.Instance != null)
+            return ProgressManager.Instance.GetScenarioKey();
+        return startScenarioId;
+    }
+
+    private string GetEndScenarioId()
+    {
+        if (useProgressBasedId && ProgressManager.Instance != null)
+            return $"Ch{ProgressManager.Instance.CurrentChapter}_loop";
+        return endScenarioId;
     }
 
     /// <summary>
-    /// comuStartUI → 1秒後にもう一度Play
+    /// Overload with explicit IDs (for script calls).
     /// </summary>
-    private async UniTaskVoid StartComuFlow()
+    public void ToggleComu(string startId, string endId)
     {
-        // ① 最初のPlay
-        MoveOnClickandReturn fadeBlackFlame = fadeFlame.GetComponent<MoveOnClickandReturn>();
-        fadeFlame.gameObject.SetActive(true);
-        fadeBlackFlame.Play();
+        if (_isAnimating) return;
+
+        if (_isInCommunication)
+        {
+            ComuEnd(endId);
+            _isInCommunication = false;
+        }
+        else
+        {
+            ComuStart(startId);
+            _isInCommunication = true;
+        }
+    }
+
+    private async UniTaskVoid StartComuFlow(string Startid)
+    {
+        _isAnimating = true;
+        SetPortraitInteractable(false);
+
+        var fadeAnim = fadeFrame.GetComponent<MoveOnClickandReturn>();
+        fadeFrame.gameObject.SetActive(true);
+        NamePlate.SetActive(false);
+        messageWindow.SetActive(false);
+        messageWindowBackGround.SetActive(false);
+        NamePlateBackGround.SetActive(false);
+
+        PlayDeskAnimation();
+        fadeAnim.Play();
 
         await UniTask.Delay(1000);
 
-        MoveOnClickandReturn callStartPanel = comuStartUI.GetComponent<MoveOnClickandReturn>();
-        callStartPanel.Play();
+        var startPanel = comuStartUI.GetComponent<MoveOnClickandReturn>();
+        startPanel.Play();
 
-        // ② 1秒待つ
         await UniTask.Delay(1500);
 
-        // ③ もう一度Play
-        callStartPanel.Play();
+        startPanel.Play();
+        PlayDeskAnimation();
 
         await UniTask.Delay(500);
-        //会話を開始する
 
-        fadeFlame.gameObject.SetActive(false);
+        NamePlate.SetActive(true);
+        messageWindow.SetActive(true);
+        messageWindowBackGround.SetActive(true);
+        NamePlateBackGround.SetActive(true);
+
+        fadeFrame.gameObject.SetActive(false);
+
+        _isAnimating = false;
+        SetPortraitInteractable(true);
+
+        messageWindowIndexStarter.StartScenarioById(Startid);
     }
 
-    /// <summary>
-    /// comuEndUI → Play() → フェード → シーン遷移(Main)
-    /// </summary>
-    public void ComuEnd()
+    private async UniTaskVoid EndComuFlow(string Endid)
     {
-        EndComuFlow().Forget();
-    }
+        _isAnimating = true;
+        SetPortraitInteractable(false);
 
-    private async UniTaskVoid EndComuFlow()
-    {
-        MoveOnClickandReturn callEndPanel = comuEndUI.GetComponent<MoveOnClickandReturn>();
-
-        // ① End UI のアニメ再生
-        callEndPanel.Play();
+        var endPanel = comuEndUI.GetComponent<MoveOnClickandReturn>();
+        var fadeAnim = fadeFrame.GetComponent<MoveOnClickandReturn>();
+        endPanel.Play();
+        NamePlate.SetActive(false);
+        messageWindow.SetActive(false);
+        messageWindowBackGround.SetActive(false);
+        NamePlateBackGround.SetActive(false);
+        fadeFrame.gameObject.SetActive(true);
+        fadeAnim.Play();
 
         await UniTask.Delay(1500);
 
-        // ② フェードパネルを前面に表示
-        callEndPanel.Play(); 
+        endPanel.Play();
+        NamePlate.SetActive(true);
+        messageWindow.SetActive(true);
+        messageWindowBackGround.SetActive(true);
+        NamePlateBackGround.SetActive(true);
+        fadeFrame.gameObject.SetActive(false);
+
+        _isAnimating = false;
+        SetPortraitInteractable(true);
+
+        messageWindowIndexStarter.StartScenarioById(Endid);
     }
 
+    private void PlayDeskAnimation()
+    {
+        if (desk.TryGetComponent<MoveOnClickandReturn>(out var move)) move.Play();
+        else if (desk.TryGetComponent<FirstMove>(out var first)) first.Play();
+    }
+
+    private void SetPortraitInteractable(bool interactable)
+    {
+        if (Portrait != null && Portrait.TryGetComponent<Button>(out var btn))
+            btn.interactable = interactable;
+    }
 }

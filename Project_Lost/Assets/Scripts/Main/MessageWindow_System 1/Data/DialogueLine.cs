@@ -27,6 +27,9 @@ namespace MessageWindowSystem.Data
 
         [Tooltip("Audio clip to play when this line is displayed (Voice)")]
         public AudioClip voiceClip;
+
+        [Tooltip("Choices to present after this line (if any).")]
+        public List<ChoiceData> choices;
     }
 
     [System.Serializable]

@@ -10,8 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d6d4b9811be404126be81f224685bce5, type: 3}
-  m_Name: test_DataBase
+  m_Name: ScenarioDataBase
   m_EditorClassIdentifier: 
   allScenarios:
   - {fileID: 11400000, guid: 6f0378b6175d84241b880b95f5ee4890, type: 2}
   - {fileID: 11400000, guid: 4634546e308af49038c1e1f6fb2db048, type: 2}
+  - {fileID: 11400000, guid: 8a51b7dc188444fc6a1d2a5bf32b6cf4, type: 2}
+  - {fileID: 11400000, guid: 3100e8b478ff841368adf8fbd0b65d76, type: 2}
+  - {fileID: 11400000, guid: cc0620ce8f50440e494c1e5f7637e6ab, type: 2}

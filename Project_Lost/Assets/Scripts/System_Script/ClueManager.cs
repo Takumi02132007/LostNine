@@ -1,20 +1,20 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
+using MessageWindowSystem.Core;
 
+/// <summary>
+/// Manages keyword discovery and click state for the dialogue system.
+/// </summary>
 public class ClueManager : MonoBehaviour
 {
     public static ClueManager Instance { get; private set; }
 
-    // キーワードの状態管理
-    // discovered: セリフ中に「見つけた（1回目）」状態
-    // clicked: 実際にクリックしてメモが追加された状態
-    private HashSet<string> _discovered = new HashSet<string>();
-    private HashSet<string> _clicked = new HashSet<string>();
-
-    [Header("Clue Settings")]
-    [Tooltip("キーワードが最初からクリック可能か。false の場合は最初に見つける（発見）必要がある。")]
+    [Header("Settings")]
+    [Tooltip("If true, keywords are clickable immediately without discovery.")]
     public bool clickableImmediately = false;
+
+    private readonly HashSet<string> _discovered = new();
+    private readonly HashSet<string> _clicked = new();
 
     private void Awake()
     {
@@ -22,88 +22,62 @@ public class ClueManager : MonoBehaviour
         else Destroy(gameObject);
     }
 
-    private void Start()
-    {
-        Debug.Log("[ClueManager] Start() called");
-        // MessageWindowManager からの自動購読は行わず、UI 側が明示的に呼び出す形にする
-        if (MessageWindowSystem.Core.MessageWindowManager.Instance != null)
-        {
-            Debug.Log("[ClueManager] MessageWindowManager.Instance found (no auto-subscribe)");
-        }
-        else
-        {
-            Debug.LogWarning("[ClueManager] MessageWindowManager.Instance is NULL! UI will call ClueManager methods directly when available.");
-        }
-    }
-
-    // ステージ切り替えなどで状態をリセットする
+    /// <summary>
+    /// Resets all keyword states (for stage transitions).
+    /// </summary>
     public void ResetForNewStage()
     {
         _discovered.Clear();
         _clicked.Clear();
     }
 
-    // UI から直接呼び出す：発見（発見演出のみ）
-    public void DiscoverKeyword(string linkID)
+    /// <summary>
+    /// Marks a keyword as discovered (first encounter).
+    /// </summary>
+    public void DiscoverKeyword(string id)
     {
-        if (string.IsNullOrEmpty(linkID)) return;
-        if (_discovered.Contains(linkID) || _clicked.Contains(linkID)) return;
+        if (string.IsNullOrEmpty(id) || _discovered.Contains(id) || _clicked.Contains(id)) return;
 
-        _discovered.Add(linkID);
-        Debug.Log($"[ClueManager] 発見(DiscoverKeyword): {linkID}");
-        MessageWindowSystem.Core.MessageWindowManager.Instance?.SetLinkColor(linkID, "#FFFF00");
-        MessageWindowSystem.Core.MessageWindowManager.Instance?.ShakeLinkVisual(linkID);
+        _discovered.Add(id);
+        MessageWindowManager.Instance?.SetLinkColor(id, "#FFFF00");
+        MessageWindowManager.Instance?.ShakeLinkVisual(id);
     }
 
-    // UI から直接呼び出す：クリック確定（メモ追加および会話起動を試みる）
-    public void ProcessKeywordClick(string linkID)
+    /// <summary>
+    /// Processes a keyword click (confirms discovery and triggers effects).
+    /// </summary>
+    public void ProcessKeywordClick(string id)
     {
-        if (string.IsNullOrEmpty(linkID)) return;
+        if (string.IsNullOrEmpty(id)) return;
 
-        Debug.Log($"[ClueManager] ProcessKeywordClick: {linkID}");
+        bool canClick = clickableImmediately || _discovered.Contains(id);
 
-        bool isClickable = clickableImmediately || _discovered.Contains(linkID);
-
-        if (!isClickable)
+        if (!canClick)
         {
-            // 発見扱い（まだ確定はしない）
-            DiscoverKeyword(linkID);
+            DiscoverKeyword(id);
             return;
         }
 
-        // クリック処理: メモ追加、会話開始、視覚変化
-        if (!_clicked.Contains(linkID))
+        if (!_clicked.Contains(id))
         {
-            _clicked.Add(linkID);
-            AddNoteAutomatically(linkID);
-            MessageWindowSystem.Core.MessageWindowManager.Instance?.SetLinkColor(linkID, "#888888"); // 既読色
+            _clicked.Add(id);
+            AddNoteAutomatically(id);
+            MessageWindowManager.Instance?.SetLinkColor(id, "#888888");
         }
 
-        // キーワードに関する特別会話を開始
-        MessageWindowSystem.Core.MessageWindowManager.Instance?.StartKeywordConversation(linkID);
+        MessageWindowManager.Instance?.StartKeywordConversation(id);
     }
 
-    public bool IsClicked(string id)
-    {
-        return _clicked.Contains(id);
-    }
+    public bool IsClicked(string id) => _clicked.Contains(id);
 
     public void ResetKeywordStatus(string id)
     {
-        if (_clicked.Contains(id)) _clicked.Remove(id);
-        if (_discovered.Contains(id)) _discovered.Remove(id);
-        Debug.Log($"[ClueManager] Reset status for: {id}");
+        _clicked.Remove(id);
+        _discovered.Remove(id);
     }
 
     private void AddNoteAutomatically(string id)
     {
-        Debug.Log($"[ClueManager] 自動メモを追加しました: {id}");
-        // TODO: NotebookManager があればそちらへ登録する
-        // NotebookManager.Instance?.AddClue(id, "自動追加された記憶の欠片");
-    }
-
-    private void OnDestroy()
-    {
-        // no auto-subscription, nothing to unsubscribe
+        // TODO: Integrate with NotebookManager when available
     }
 }
