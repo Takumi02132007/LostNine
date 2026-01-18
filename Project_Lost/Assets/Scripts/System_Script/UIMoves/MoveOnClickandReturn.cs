@@ -38,6 +38,15 @@ public class MoveOnClickandReturn : MonoBehaviour //MoveWithEasingをクリッ�
     [SerializeField] private float sizeDuration = 0.6f;
     [SerializeField] private DG.Tweening.Ease sizeEase = DG.Tweening.Ease.OutBack;
 
+    [Space]
+    [Header("Rotation Settings")]
+    [SerializeField] private bool enableRotation = false;
+    [SerializeField] private Vector3 targetRotation = Vector3.zero;
+    [SerializeField] private float rotateDuration = 0.6f;
+    [SerializeField] private DG.Tweening.Ease rotateEase = DG.Tweening.Ease.OutBack;
+
+    private Vector3 _originalRotation;
+
     void Awake()
     {
         _rect = GetComponent<RectTransform>();
@@ -47,6 +56,7 @@ public class MoveOnClickandReturn : MonoBehaviour //MoveWithEasingをクリッ�
             _originalSizeDelta = _rect.sizeDelta;
         }
         _originalScale = transform.localScale;
+        _originalRotation = transform.localEulerAngles;
     }
 
     public void Play()
@@ -80,6 +90,10 @@ public class MoveOnClickandReturn : MonoBehaviour //MoveWithEasingをクリッ�
             {
                 _rect.DOSizeDelta(targetSizeDelta, sizeDuration).SetEase(sizeEase);
             }
+            if (enableRotation)
+            {
+                transform.DORotate(targetRotation, rotateDuration).SetEase(rotateEase);
+            }
             isMoved = true;
         }
         else
@@ -106,6 +120,10 @@ public class MoveOnClickandReturn : MonoBehaviour //MoveWithEasingをクリッ�
             if (enableSize)
             {
                 _rect.DOSizeDelta(_originalSizeDelta, sizeDuration).SetEase(sizeEase);
+            }
+            if (enableRotation)
+            {
+                transform.DORotate(_originalRotation, rotateDuration).SetEase(rotateEase);
             }
             isMoved = false;
         }

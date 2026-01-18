@@ -26,18 +26,69 @@ namespace Tuning.Core
         [Tooltip("フラッシュ演出用オーバーレイ画像")]
         [SerializeField] private Image flashOverlay;
 
+        [Tooltip("フェード演出用オーバーレイ画像（暗転用）")]
+        [SerializeField] private Image fadeOverlay;
+
         [Tooltip("左側の点のビジュアル（シェイク演出用）")]
         [SerializeField] private RectTransform leftPointVisual;
 
         [Tooltip("右側の点のビジュアル（シェイク演出用）")]
         [SerializeField] private RectTransform rightPointVisual;
 
+        [Tooltip("安定度が低い時の追加シェイク最大強度（不安定なほど揺れる）")]
+        [SerializeField] private float maxStabilityShake = 5f;
+
+        [Tooltip("シェイク位置を初期位置に戻そうとする強さ")]
+        [SerializeField] private float centeringSpeed = 5f;
+
         [Tooltip("ノイズ演出用オーバーレイ（同期率が低いと表示）")]
         [SerializeField] private CanvasGroup noiseOverlay;
+
+        [SerializeField] private Vector2 _leftInitPos;
+        [SerializeField] private Vector2 _rightInitPos;
+
+        [Header("UI")]
+        [Tooltip("ゲームオーバーまでの残り時間を表示するバー（Xスケールで変動）")]
+        [SerializeField] private RectTransform overheatTimerBar;
+
+        [Tooltip("バーの色を変更するためのImage（警告用）")]
+        [SerializeField] private Image overheatTimerImage;
+
+        [Header("ビジュアル（波形）")]
+        [Tooltip("左側の波形ビジュアライザー")]
+        [SerializeField] private Tuning.Visuals.WaveformVisualizer leftWaveform;
+
+        [Tooltip("右側の波形ビジュアライザー")]
+        [SerializeField] private Tuning.Visuals.WaveformVisualizer rightWaveform;
+
+        [Tooltip("最小周波数（同期率0%時）")]
+        [SerializeField] private float minWaveFreq = 2f;
+
+        [Tooltip("最大周波数（同期率100%時）")]
+        [SerializeField] private float maxWaveFreq = 15f;
+
+        [Tooltip("最小振幅（安定度0%時）")]
+        [SerializeField] private float minWaveAmp = 20f;
+
+        [Tooltip("最大振幅（安定度100%時）")]
+        [SerializeField] private float maxWaveAmp = 60f;
+
+        [Tooltip("通常時の線の太さ")]
+        [SerializeField] private float baseThickness = 2f;
+
+        [Tooltip("ターゲットロック時の線の太さ加算値（1つにつき）")]
+        [SerializeField] private float thicknessBoostPerLock = 3f;
+
+        [Tooltip("NGゾーン滞在時のノイズビジュアライザー")]
+        [SerializeField] private Tuning.Visuals.NoiseVisualizer ngNoise;
 
         [Header("成功演出")]
         [Tooltip("成功時に再生するSE")]
         [SerializeField] private AudioClip successSE;
+
+        [Tooltip("成功時に動かすオブジェクト（MoveOnClickandReturnを持つ）")]
+        [SerializeField] private MoveOnClickandReturn successMoveVisual;
+        [SerializeField] private MoveOnClickandReturn ToNextStepVisual;
 
         [Tooltip("SE再生用AudioSource")]
         [SerializeField] private AudioSource seSource;
@@ -52,12 +103,24 @@ namespace Tuning.Core
                 c.a = 0f;
                 flashOverlay.color = c;
             }
+
+            if (leftWaveform != null) leftWaveform.PhaseOffset = 0f;
+            if (rightWaveform != null) rightWaveform.PhaseOffset = Mathf.PI;
+        }
+
+        private void Start()
+        {
+            //if (leftPointVisual != null) _leftInitPos = leftPointVisual.anchoredPosition;
+            //if (rightPointVisual != null) _rightInitPos = rightPointVisual.anchoredPosition;
         }
 
         /// <summary>
-        /// 同期率に基づいてオーディオフィルターを更新
+        /// 同期率、安定度、ロック状態に基づいて演出を更新
         /// </summary>
-        public void OnSyncUpdate(float totalSync)
+        /// <summary>
+        /// 同期率、安定度、ロック状態に基づいて演出を更新
+        /// </summary>
+        public void OnSyncUpdate(float leftSync, float rightSync, float totalSync, float stability, bool leftLocked, bool rightLocked)
         {
             if (lowPassFilter == null) return;
 
@@ -67,7 +130,62 @@ namespace Tuning.Core
             if (noiseOverlay != null)
                 noiseOverlay.alpha = 1f - totalSync;
 
-            ApplyShake(totalSync);
+            UpdateWaveform(leftWaveform, leftSync, stability, leftLocked);
+            UpdateWaveform(rightWaveform, rightSync, stability, rightLocked);
+
+            ApplyShake(totalSync, stability);
+        }
+
+        private void UpdateWaveform(Tuning.Visuals.WaveformVisualizer wave, float sync, float stability, bool isLocked)
+        {
+            if (wave == null) return;
+
+            // 同期率 -> 周波数（細かい波へ）
+            wave.Frequency = Mathf.Lerp(minWaveFreq, maxWaveFreq, sync);
+            // 安定度 -> 振幅（大きな波へ）
+            wave.Amplitude = Mathf.Lerp(minWaveAmp, maxWaveAmp, stability);
+            
+            // ターゲットロック -> 線の太さ
+            float targetThickness = baseThickness + (isLocked ? thicknessBoostPerLock : 0f);
+            wave.Thickness = Mathf.Lerp(wave.Thickness, targetThickness, Time.deltaTime * 10f);
+        }
+
+
+
+        /// <summary>
+        /// ペナルティ状態（オーバーヒートタイマー）の更新
+        /// </summary>
+        public void OnPenaltyUpdate(float currentTimer, float threshold, bool isInNGZone, float stability)
+        {
+            if (overheatTimerBar != null)
+            {
+                // 残り時間の割合 (1.0 -> 0.0)
+                float ratio = Mathf.Clamp01(1f - (currentTimer / threshold));
+                Vector3 scale = overheatTimerBar.localScale;
+                scale.x = ratio;
+                overheatTimerBar.localScale = scale;
+
+                // 残り時間が少なくなったら赤くする（残り約20%以下など）
+                if (overheatTimerImage != null)
+                {
+                    if (ratio < 0.3f)
+                    {
+                        overheatTimerImage.color = Color.Lerp(Color.red, Color.white, Mathf.PingPong(Time.time * 10f, 1f));
+                    }
+                    else
+                    {
+                        overheatTimerImage.color = Color.white;
+                    }
+                }
+            }
+
+            // NGゾーンのノイズ演出
+            // 安定度がMAX(1.0)になったら消える
+            if (ngNoise != null)
+            {
+                bool showNoise = isInNGZone && stability < 0.99f;
+                ngNoise.IsEffectActive = showNoise;
+            }
         }
 
         /// <summary>
@@ -101,6 +219,40 @@ namespace Tuning.Core
 
             if (noiseOverlay != null)
                 noiseOverlay.DOFade(0f, 0.5f);
+
+            if (overheatTimerBar != null)
+                overheatTimerBar.gameObject.SetActive(false);
+
+            // 波形を最大状態にする
+            if (leftWaveform != null)
+            {
+                leftWaveform.Frequency = maxWaveFreq;
+                leftWaveform.Amplitude = maxWaveAmp;
+                leftWaveform.PhaseOffset = 0f;
+                leftWaveform.ResetWave();
+            }
+            if (rightWaveform != null)
+            {
+                rightWaveform.Frequency = maxWaveFreq;
+                rightWaveform.Amplitude = maxWaveAmp;
+                rightWaveform.PhaseOffset = Mathf.PI;
+                rightWaveform.ResetWave();
+            }
+
+            // 成功演出アニメーション（MoveOnClickandReturn）
+            if (successMoveVisual != null)
+            {
+                successMoveVisual.Play();
+                // 1秒後にもう一度再生（元の位置に戻る等の動作を想定）
+                DOVirtual.DelayedCall(2f, () => 
+                {
+                    if (successMoveVisual != null) successMoveVisual.Play();
+                });
+                DOVirtual.DelayedCall(3f, () => 
+                {
+                    if(ToNextStepVisual != null) ToNextStepVisual.Play();
+                });
+            }
         }
 
         /// <summary>
@@ -110,25 +262,93 @@ namespace Tuning.Core
         {
             if (flashOverlay != null)
             {
-                flashOverlay.color = new Color(1f, 0f, 0f, 0f);
+                flashOverlay.color = new Color(0f, 0f, 0f, 0f);
                 flashOverlay.DOFade(0.8f, 0.2f);
             }
         }
 
-        private void ApplyShake(float sync)
+        public void FadeOut(float duration, System.Action onComplete)
         {
-            float shakeIntensity = (1f - sync) * 3f;
+            if (fadeOverlay != null)
+            {
+                fadeOverlay.color = new Color(0f, 0f, 0f, 0f);
+                fadeOverlay.DOFade(1f, duration).OnComplete(() => onComplete?.Invoke());
+            }
+            else
+            {
+                onComplete?.Invoke();
+            }
+        }
+
+        public void FadeIn(float duration)
+        {
+            if (fadeOverlay != null)
+            {
+                fadeOverlay.color = new Color(0f, 0f, 0f, 1f);
+                fadeOverlay.DOFade(0f, duration);
+            }
+        }
+
+        private void ApplyShake(float sync, float stability)
+        {
+            // 同期率が低い時のシェイク + 安定度が低い時のシェイク
+            // 安定度が高まるにつれてシェイクが収まっていく
+            float baseShake = (1f - sync) * 3f;
+            float instabilityShake = (1f - stability) * maxStabilityShake;
+            
+            float totalShake = baseShake + instabilityShake;
 
             if (leftPointVisual != null)
             {
-                Vector2 offset = Random.insideUnitCircle * shakeIntensity;
-                leftPointVisual.anchoredPosition += offset * Time.deltaTime * 60f;
+                Vector2 currentPos = leftPointVisual.anchoredPosition;
+                Vector2 random = Random.insideUnitCircle * totalShake;
+                
+                // 初期位置に戻ろうとする力（ばねのような挙動）
+                Vector2 restoringForce = (_leftInitPos - currentPos) * centeringSpeed;
+
+                Vector2 move = (random + restoringForce) * Time.deltaTime * 30f;
+                leftPointVisual.anchoredPosition += move;
             }
 
             if (rightPointVisual != null)
             {
-                Vector2 offset = Random.insideUnitCircle * shakeIntensity;
-                rightPointVisual.anchoredPosition += offset * Time.deltaTime * 60f;
+                Vector2 currentPos = rightPointVisual.anchoredPosition;
+                Vector2 random = Random.insideUnitCircle * totalShake;
+
+                // 初期位置に戻ろうとする力
+                Vector2 restoringForce = (_rightInitPos - currentPos) * centeringSpeed;
+
+                Vector2 move = (random + restoringForce) * Time.deltaTime * 30f;
+                rightPointVisual.anchoredPosition += move;
+            }
+        }
+        public void ResetFeedback()
+        {
+            if (ngNoise != null)
+                ngNoise.IsEffectActive = false;
+            
+            if (overheatTimerBar != null)
+            {
+                overheatTimerBar.localScale = new Vector3(1f, 1f, 1f);
+                overheatTimerBar.gameObject.SetActive(true);
+            }
+
+            if (overheatTimerImage != null)
+                overheatTimerImage.color = Color.white;
+
+            if (noiseOverlay != null)
+                noiseOverlay.alpha = 1f; // Initial state (low sync)
+
+            // 位相オフセットをリセット（確実に適用するためここで再設定）
+            if (leftWaveform != null) leftWaveform.PhaseOffset = 0f;
+            if (rightWaveform != null) rightWaveform.PhaseOffset = Mathf.PI;
+
+            if (flashOverlay != null)
+            {
+                flashOverlay.DOKill();
+                var c = flashOverlay.color;
+                c.a = 0f;
+                flashOverlay.color = c;
             }
         }
     }

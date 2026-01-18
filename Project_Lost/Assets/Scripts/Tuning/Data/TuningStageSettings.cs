@@ -35,6 +35,21 @@ namespace Tuning.Data
         [Range(0f, 1f)]
         public float interferenceStrength = 0f;
 
+        [Header("移動設定（左側）")]
+        [Tooltip("左側の入力に対する移動力")]
+        public float leftMoveForce = 100f;
+
+        [Tooltip("左側の点の最大移動速度")]
+        public float leftMaxSpeed = 300f;
+
+        [Header("移動設定（右側）")]
+        [Tooltip("右側の入力に対する移動力")]
+        public float rightMoveForce = 100f;
+
+        [Tooltip("右側の点の最大移動速度")]
+        public float rightMaxSpeed = 300f;
+
+        [Header("慣性設定")]
         [Tooltip("デフォルトの慣性（摩擦係数）")]
         public float baseInertia = 5f;
 
@@ -47,6 +62,13 @@ namespace Tuning.Data
 
         [Tooltip("ゲームオーバーになるまでの限界時間")]
         public float overheatThreshold = 5f;
+
+        [Header("NGゾーン設定")]
+        [Tooltip("NGゾーンのサイズ（幅, 高さ）")]
+        public Vector2 ngZoneSize = new Vector2(80f, 80f);
+
+        [Tooltip("ターゲット周辺のNGゾーン配置禁止半径")]
+        public float targetSafeMargin = 100f;
 
         [Header("安定度設定")]
         [Tooltip("安定度ゲージが上昇するために必要な同期率 (0.0-1.0)")]

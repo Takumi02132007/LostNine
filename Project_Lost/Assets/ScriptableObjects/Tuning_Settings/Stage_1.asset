@@ -12,15 +12,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2db6ca3f045c745ec8612dc14004a3de, type: 3}
   m_Name: Stage_1
   m_EditorClassIdentifier: 
-  targetTolerance: 0.5
+  targetTolerance: 1
   isMovingTarget: 0
-  targetMoveSpeed: 1
+  targetMoveSpeed: 0.8
+  leftTargetPosition: {x: 0, y: 0}
+  rightTargetPosition: {x: 0, y: 0}
   isInvertedLeft: 0
   isInvertedRight: 0
   interferenceStrength: 0
-  baseInertia: 5
+  leftMoveForce: 300
+  leftMaxSpeed: 600
+  rightMoveForce: 300
+  rightMaxSpeed: 600
+  baseInertia: 2
   ngZonePenaltyRate: 2
   penaltyRecoverySpeed: 1
   overheatThreshold: 5
+  ngZoneSize: {x: 150, y: 150}
+  targetSafeMargin: 200
   syncThresholdForStability: 0.8
   stabilityDecayRate: 0.2

@@ -36,6 +36,13 @@ namespace Main.UIMoves
         [SerializeField] private float sizeDuration = 0.6f;
         [SerializeField] private DG.Tweening.Ease sizeEase = DG.Tweening.Ease.OutBack;
 
+        [Space]
+        [Header("Rotation Settings")]
+        [SerializeField] private bool enableRotation = false;
+        [SerializeField] private Vector3 targetRotation = Vector3.zero;
+        [SerializeField] private float rotateDuration = 0.6f;
+        [SerializeField] private DG.Tweening.Ease rotateEase = DG.Tweening.Ease.OutBack;
+
         void Awake()
         {
             _rect = GetComponent<RectTransform>();
@@ -69,6 +76,11 @@ namespace Main.UIMoves
             if (enableSize)
             {
                 _rect.DOSizeDelta(targetSizeDelta, sizeDuration).SetEase(sizeEase);
+            }
+
+            if (enableRotation)
+            {
+                transform.DORotate(targetRotation, rotateDuration).SetEase(rotateEase);
             }
         }
     }

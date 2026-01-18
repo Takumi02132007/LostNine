@@ -55,6 +55,9 @@ namespace MessageWindowSystem.Core
         [SerializeField] private Button[] choiceButtons;
         [SerializeField] private TMP_Text[] choiceButtonTexts;
 
+        [Header("Database")]
+        [SerializeField] private ScenarioDatabase scenarioDatabase;
+
         #endregion
 
         #region Public Properties
@@ -257,13 +260,33 @@ namespace MessageWindowSystem.Core
         {
             _shouldBlockNext = false;
 
-            if (!_isWindowActive || _isTyping || !_isKeywordEnabled) return;
+            // Debug: Check which condition blocks keyword interaction
+            if (!_isWindowActive)
+            {
+                Debug.Log("[MWM] OnPointerDown blocked: _isWindowActive is false");
+                return;
+            }
+            if (_isTyping)
+            {
+                Debug.Log("[MWM] OnPointerDown blocked: _isTyping is true");
+                return;
+            }
+            if (!_isKeywordEnabled)
+            {
+                Debug.Log("[MWM] OnPointerDown blocked: _isKeywordEnabled is false");
+                return;
+            }
 
             Camera uiCamera = GetUICamera();
             int linkIndex = TMP_TextUtilities.FindIntersectingLink(dialogueText, eventData.position, uiCamera);
 
-            if (linkIndex == -1) return;
+            if (linkIndex == -1)
+            {
+                Debug.Log($"[MWM] OnPointerDown: No link found at position {eventData.position}");
+                return;
+            }
 
+            Debug.Log($"[MWM] OnPointerDown: Link found! Index={linkIndex}");
             _shouldBlockNext = true;
             _chargingLinkID = dialogueText.textInfo.linkInfo[linkIndex].GetLinkID();
             _isCharging = true;
@@ -323,6 +346,17 @@ namespace MessageWindowSystem.Core
 
             OnKeywordClicked?.Invoke(linkID);
             ClueManager.Instance?.ProcessKeywordClick(linkID);
+
+            // Try to play corresponding scenario from database
+            if (scenarioDatabase != null)
+            {
+                var scenario = scenarioDatabase.GetScenarioById(linkID);
+                if (scenario != null)
+                {
+                    Debug.Log($"[MWM] Found scenario for keyword '{linkID}'. Playing.");
+                    StartScenario(scenario);
+                }
+            }
         }
 
         #endregion
@@ -339,6 +373,12 @@ namespace MessageWindowSystem.Core
                 _isTyping = false;
                 dialogueText.text = _currentLine.text;
                 dialogueText.maxVisibleCharacters = _currentLine.text.Length;
+
+                // Show choices if this line has any (same logic as end of TypeText)
+                if (_currentLine?.choices != null && _currentLine.choices.Count > 0)
+                {
+                    ShowChoices(_currentLine.choices);
+                }
                 return;
             }
 
@@ -386,12 +426,64 @@ namespace MessageWindowSystem.Core
 
         private void EndScenario()
         {
+            // まずウィンドウ自体は一度閉じるような形になるが、連続再生の場合はStartScenarioで再設定される
+            // ただし、一瞬消えるのを防ぐため、連続再生が確定したら非表示化をスキップすることも可能
+            // ここではシンプルに、次のシナリオがない場合のみ閉じるロジックにする
+
+            bool hasNextChain = false;
+            
+            // Cache toggleComuOnEnd before _currentScenarioData could change
+            bool shouldToggleComu = _currentScenarioData != null && _currentScenarioData.toggleComuOnEnd;
+
+            // Update Progress if configured
+            if (_currentScenarioData != null && _currentScenarioData.updateProgressOnEnd && ProgressManager.Instance != null)
+            {
+                switch (_currentScenarioData.progressAction)
+                {
+                    case ProgressActionType.AdvancePhase:
+                        ProgressManager.Instance.AdvancePhase();
+                        break;
+                    case ProgressActionType.AdvanceChapter:
+                        ProgressManager.Instance.AdvanceChapter();
+                        break;
+                    case ProgressActionType.SetDirectly:
+                        ProgressManager.Instance.SetProgress(_currentScenarioData.targetChapter, _currentScenarioData.targetPhase);
+                        break;
+                }
+                
+                Debug.Log($"[MWM] Progress Updated via Scenario: {_currentScenarioData.name}");
+
+                // Try to find the next scenario based on new progress
+                if (scenarioDatabase != null)
+                {
+                    string newKey = ProgressManager.Instance.GetScenarioKey();
+                    var nextScenario = scenarioDatabase.GetScenarioById(newKey);
+                    if (nextScenario != null)
+                    {
+                        Debug.Log($"[MWM] Found consecutive scenario: {newKey}. Playing immediately.");
+                        StartScenario(nextScenario);
+                        hasNextChain = true;
+                    }
+                    else
+                    {
+                        Debug.Log($"[MWM] No consecutive scenario found for key: {newKey}");
+                    }
+                }
+            }
+
+            // Call ToggleComu if configured (ONLY when no consecutive scenario)
+            // Note: If there's a chain, we don't toggle because we're continuing the conversation
+
+            if (hasNextChain) return;
+
+            // If no chain, close window
             _isWindowActive = false;
             if (windowRoot) windowRoot.SetActive(false);
 
-            // Call ToggleComu if configured
-            if (_currentScenarioData != null && _currentScenarioData.toggleComuOnEnd)
+            // Call ToggleComu after closing window (only when no chain)
+            if (shouldToggleComu)
             {
+                Debug.Log($"[MWM] Calling ToggleComu");
                 var comuManager = FindAnyObjectByType<ComuStartandEndManager>();
                 comuManager?.ToggleComu();
             }

@@ -21,6 +21,26 @@ namespace MessageWindowSystem.Data
         [Tooltip("If true, calls ComuStartandEndManager.ToggleComu() when this scenario ends.")]
         public bool toggleComuOnEnd = false;
 
+        [Header("Progress Update")]
+        [Tooltip("If true, updates ProgressManager when this scenario ends.")]
+        public bool updateProgressOnEnd = false;
+
+        [Tooltip("How to update the progress.")]
+        public ProgressActionType progressAction = ProgressActionType.AdvancePhase;
+
+        [Tooltip("Target chapter (only used if SetDirectly).")]
+        public int targetChapter = 1;
+
+        [Tooltip("Target phase (only used if SetDirectly).")]
+        public GamePhase targetPhase = GamePhase.Dialogue;
+
         public List<DialogueLine> lines;
+    }
+
+    public enum ProgressActionType
+    {
+        AdvancePhase,
+        AdvanceChapter,
+        SetDirectly
     }
 }
