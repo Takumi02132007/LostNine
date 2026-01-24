@@ -15,7 +15,7 @@ MonoBehaviour:
   scenarioId: Ch1_loop
   nextScenario: {fileID: 0}
   enableKeywords: 1
-  loopScenario: 0
+  loopScenario: 1
   toggleComuOnEnd: 0
   updateProgressOnEnd: 0
   progressAction: 0
