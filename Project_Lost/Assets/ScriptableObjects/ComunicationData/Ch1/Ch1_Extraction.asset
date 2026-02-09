@@ -23,7 +23,7 @@ MonoBehaviour:
   targetPhase: 2
   lines:
   - speakerName: "\u30D2\u30A4\u30E9\u30AE"
-    portrait: {fileID: 3111245154338304687, guid: d4248e0122c794ab7831cbd76bf71134, type: 3}
+    portrait: {fileID: 21300000, guid: d4a4cbdc576484544a0d2f50c078e9a8, type: 3}
     text: "\u3042\u308C\uFF1F\u4F55\u3082\u5909\u308F\u3063\u3066\u306A\u304F\u306A\u3044\u3067\u3059\u304B\uFF1F"
     effects: []
     typingSpeed: 0

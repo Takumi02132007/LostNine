@@ -185,6 +185,10 @@ MonoBehaviour:
   targetSizeDelta: {x: 0, y: 0}
   sizeDuration: 0.6
   sizeEase: 27
+  enableRotation: 0
+  targetRotation: {x: 0, y: 0, z: 0}
+  rotateDuration: 0.6
+  rotateEase: 27
 --- !u!114 &1756115
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -320,6 +324,10 @@ MonoBehaviour:
   targetSizeDelta: {x: 0, y: 0}
   sizeDuration: 0.6
   sizeEase: 27
+  enableRotation: 0
+  targetRotation: {x: 0, y: 0, z: 0}
+  rotateDuration: 0.6
+  rotateEase: 27
 --- !u!1 &78187690
 GameObject:
   m_ObjectHideFlags: 0
@@ -742,7 +750,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
-  m_Volume: 1
+  m_Volume: 0.5
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -1772,6 +1780,10 @@ MonoBehaviour:
   targetSizeDelta: {x: 0, y: 0}
   sizeDuration: 0.6
   sizeEase: 27
+  enableRotation: 0
+  targetRotation: {x: 0, y: 0, z: 0}
+  rotateDuration: 0.6
+  rotateEase: 27
 --- !u!1 &1176451730
 GameObject:
   m_ObjectHideFlags: 0
@@ -1877,7 +1889,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
-  m_Volume: 1
+  m_Volume: 0.5
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -2387,6 +2399,10 @@ MonoBehaviour:
   targetSizeDelta: {x: 0, y: 0}
   sizeDuration: 0.6
   sizeEase: 27
+  enableRotation: 0
+  targetRotation: {x: 0, y: 0, z: 0}
+  rotateDuration: 0.6
+  rotateEase: 27
 --- !u!1 &1701392850
 GameObject:
   m_ObjectHideFlags: 0
@@ -2612,6 +2628,10 @@ MonoBehaviour:
   targetSizeDelta: {x: 0, y: 0}
   sizeDuration: 0.6
   sizeEase: 27
+  enableRotation: 0
+  targetRotation: {x: 0, y: 0, z: 0}
+  rotateDuration: 0.6
+  rotateEase: 27
 --- !u!114 &1840856342
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2851,6 +2871,10 @@ MonoBehaviour:
   targetSizeDelta: {x: 0, y: 0}
   sizeDuration: 0.6
   sizeEase: 27
+  enableRotation: 0
+  targetRotation: {x: 0, y: 0, z: 0}
+  rotateDuration: 0.6
+  rotateEase: 27
 --- !u!1 &1901721250
 GameObject:
   m_ObjectHideFlags: 0
@@ -3063,6 +3087,10 @@ MonoBehaviour:
   targetSizeDelta: {x: 0, y: 0}
   sizeDuration: 0.6
   sizeEase: 27
+  enableRotation: 0
+  targetRotation: {x: 0, y: 0, z: 0}
+  rotateDuration: 0.6
+  rotateEase: 27
 --- !u!114 &1901721256
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3091,6 +3119,10 @@ MonoBehaviour:
   targetSizeDelta: {x: 0, y: 0}
   sizeDuration: 0.6
   sizeEase: 27
+  enableRotation: 0
+  targetRotation: {x: 0, y: 0, z: 0}
+  rotateDuration: 0.6
+  rotateEase: 27
 --- !u!1 &1912411278
 GameObject:
   m_ObjectHideFlags: 0

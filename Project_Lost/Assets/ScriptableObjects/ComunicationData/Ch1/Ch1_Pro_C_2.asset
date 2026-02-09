@@ -23,7 +23,7 @@ MonoBehaviour:
   targetPhase: 1
   lines:
   - speakerName: "\u30D2\u30A4\u30E9\u30AE"
-    portrait: {fileID: 3111245154338304687, guid: d4248e0122c794ab7831cbd76bf71134, type: 3}
+    portrait: {fileID: 21300000, guid: d4a4cbdc576484544a0d2f50c078e9a8, type: 3}
     text: "\u305D\u308C\u306F\u3061\u3087\u3063\u3068\u53B3\u3057\u3044\u3067\u3059\u306D.....\n<b>\u30B2\u30FC\u30E0\u958B\u767A\u3092\u8210\u3081\u306A\u3044\u3067\u304F\u3060\u3055\u3044\u3002</b>"
     effects: []
     typingSpeed: 0
@@ -31,7 +31,7 @@ MonoBehaviour:
     voiceClip: {fileID: 0}
     choices: []
   - speakerName: "\u30D2\u30A4\u30E9\u30AE"
-    portrait: {fileID: 3111245154338304687, guid: d4248e0122c794ab7831cbd76bf71134, type: 3}
+    portrait: {fileID: 21300000, guid: d4a4cbdc576484544a0d2f50c078e9a8, type: 3}
     text: "\u96D1\u8AC7\u3082\u307B\u3069\u307B\u3069\u306B...\n\u305D\u308D\u305D\u308D\u6B21\u306E\u30D5\u30A7\u30FC\u30BA\u306B\u79FB\u308A\u307E\u3057\u3087\u3046\u304B\uFF1F"
     effects: []
     typingSpeed: 0
@@ -39,7 +39,7 @@ MonoBehaviour:
     voiceClip: {fileID: 0}
     choices: []
   - speakerName: "\u30D2\u30A4\u30E9\u30AE"
-    portrait: {fileID: 3111245154338304687, guid: d4248e0122c794ab7831cbd76bf71134, type: 3}
+    portrait: {fileID: 21300000, guid: d4a4cbdc576484544a0d2f50c078e9a8, type: 3}
     text: "\u79C1\u3092\"\u30AF\u30EA\u30C3\u30AF\"\u3057\u3066\u304F\u3060\u3055\u3044\uFF01"
     effects: []
     typingSpeed: 0
